@@ -1,3 +1,8 @@
+others/
+*.img
+*.log
+*.bin
+
 # Prerequisites
 *.d
 
