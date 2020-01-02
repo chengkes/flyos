@@ -11,4 +11,4 @@ run/boot.bin:boot.asm
 img:run/os.img
 
 clean:
-	rm -f run/*.bin
+	rm -f run/*.bin  run/bochsout.txt
