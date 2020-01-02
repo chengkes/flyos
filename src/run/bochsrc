@@ -2,9 +2,8 @@ megs: 32
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
 vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
 vga: extension=vbe, update_freq=15
-floppya: 1_44=a.img, status=inserted
-ata0-master: type=disk, path=dos.img, cylinders=306, heads=4, spt=17
-boot: disk
-log: bochsout.log
+floppya: 1_44=os.img, status=inserted
+boot: floppy
+log: bochsout.txt
 mouse: enabled=0
 cpu: ips=15000000
