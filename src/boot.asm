@@ -1,4 +1,4 @@
-	org	07c00h			; 告诉编译器程序加载到7c00处
+org	07c00h			; 告诉编译器程序加载到7c00处
 
 		; 下面是 FAT12 磁盘的头
 	jmp LABEL_START
@@ -27,15 +27,10 @@ LABEL_START:
 	mov	ax, cs
 	mov	ds, ax
 	mov	es, ax
-	call	DispStr			; 调用显示字符串例程
-	
-	;; find file loader.bin
-	
-	;; FAT12 根目录区长度
-	
+	mov	ss, ax
+	mov	sp, 07c00h
 
-	jmp	$			; 无限循环
-DispStr:
+	; 显示BOOT字符串信息
 	mov	ax, BootMessage
 	mov	bp, ax			; ES:BP = 串地址
 	mov	cx, 16			; CX = 串长度
@@ -43,7 +38,46 @@ DispStr:
 	mov	bx, 000ch		; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
 	mov	dl, 0
 	int	10h			; 10h 号中断
-	ret
+	
+	; 复位软驱
+	xor ah, ah	
+	xor dl, dl			;驱动器号 A盘
+	int 13h
+	
+	; 读取软盘扇区数据
+	mov ax, 19		; 
+	mov bl, 18
+	div bl
+	inc ah	
+	mov  cl, ah				;起始扇区号
+	mov dh,  al			
+	and dh, 1				;磁头号
+	shr al, 1
+	mov ch,	al			;磁道号
+	mov ah, 02h	
+	xor dl, dl			;驱动器号 A盘
+	mov al, 1 			; 要读扇区数
+	mov bx, 8000h
+	int 13h
+	
+	mov si, LOADER_NAME
+	mov di, bx
+	.goon:
+	dec al
+	test al, al
+	cmps	
+	jz   .goon
+	mov al, 11
+	sub si, LOADER_NAME
+	sub di, si
+	mov si, LOADER_NAME
+	add di, 32
+	jmp  .goon
+
+
+	jmp	$			; 无限循环
+
+LOADER_NAME:  db "loader  bin"
 BootMessage:		db	"Hello,FLY world!"
 times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
 dw 	0xaa55				; 结束标志
