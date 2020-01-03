@@ -27,7 +27,11 @@ LABEL_START:
 	mov	ax, cs
 	mov	ds, ax
 	mov	es, ax
+	mov	ss, ax
+	mov	sp, 07c00h
+	push 	BootMessage
 	call	DispStr			; 调用显示字符串例程
+	and 	sp, 2
 	
 	;; find file loader.bin
 	
@@ -35,14 +39,25 @@ LABEL_START:
 	
 
 	jmp	$			; 无限循环
+
+
 DispStr:
-	mov	ax, BootMessage
+	push	ax
+	push	bp
+	push	cx
+	push	dx
+	mov	bp,sp
+	mov	ax, [bp+10]
 	mov	bp, ax			; ES:BP = 串地址
-	mov	cx, 16			; CX = 串长度
+	mov	cx, 10			; CX = 串长度
 	mov	ax, 01301h		; AH = 13,  AL = 01h
 	mov	bx, 000ch		; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
 	mov	dl, 0
 	int	10h			; 10h 号中断
+	pop	dx
+	pop	cx
+	pop	bp
+	pop	ax
 	ret
 BootMessage:		db	"Hello,FLY world!"
 times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
