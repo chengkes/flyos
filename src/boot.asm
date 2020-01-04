@@ -39,28 +39,21 @@ LABEL_START:
 	xor 	ah, ah
 	xor 	dl, dl                  ;驱动器号A盘
 	int 	13h
-
-	; push	LoaderName
-	; push	LoaderName
-	; push	10
-	; call 	CmpStr
-	; add		sp, 4
-	; pop		ax				; 获取CmpStr返回值
-	; test	ax, ax
-	; jnz		.next			; 不相等
-
-	; push 	LoaderName
-	; push	0203h
-	; call	DispStr			; 调用显示字符串例程
-	; add 	sp, 4		
-
-	; 从软盘中读取文件到内存
-	push	LoaderName
-	push	ds			; 数据存放在DS：08000处
-	push	LOADER_ADDR
-	call	ReadFile
-	add		sp, 6
-
+	
+	; 从软盘中查找文件
+	push	NoLoader
+	call	SearchFile
+	pop		ax
+	test	ax, ax
+	jz		.not_found
+	; todo
+	jmp 	.done
+.not_found:
+	push	NoLoader
+	push	0201h
+	call 	DispStr
+	add		sp, 4
+.done:
 	jmp		$			; 无限循环
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -91,14 +84,19 @@ DispStr:
 	ret 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 从FAT12格式软盘中读取文件到内存
+;; 从FAT12格式软盘根目录区 查找文件 
 ;; 参数1， word， 文件名，11个字节，文件名和扩展名用空格分开
-;; 参赛2， word,  内存地址，段基址
-;; 参赛3， word,  内存地址，段内偏移
-ReadFile:
-	; todo: 
+;; 返回： 目录数据偏移地址
+SearchFile:
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	push	bp
+	push	si	 
 	mov 	bp, sp 
-	
+	add		bp, 12
+
 	mov		ax, [BPB_RootEntCnt]
 	mov		bl, EntCntPerSector
 	div		bl						; AH为余数， AL为商
@@ -107,7 +105,6 @@ ReadFile:
 	inc		al	
 	xor		ah, ah
 .1:
-	mov		cx, ax					; 根目录占用扇区数目 = BPB_RootEntCnt / 16 +1 
 	mov		bx, DirStartSectNo		; FAT12根目录起始扇区号
 .next_sector:
 	; 读取扇数据
@@ -119,46 +116,43 @@ ReadFile:
 	add 	sp, 8	
 
 	mov		si, BUFF_ADDR
-	push	cx
 	mov		cx, EntCntPerSector
 .next_dir_entry:
-	push	LoaderName
+	mov		dx,[ss:bp+2]
+	push	dx
 	push	si
 	push	LOADER_NAME_LEN
 	call	CmpStr
 	add		sp, 4
-	pop		ax
-	test	ax, ax
+	pop		dx
+	test	dx, dx
 	jz		.find_loader		; 找到loader
 	; 没有找到loader， 查看下一个根目录
 	add		si, DIR_ENTRY_SIZE 
 	loop	.next_dir_entry
-	pop		cx
 
 	inc		bx
-	loop	.next_sector
+	dec		ax
+	test 	ax, ax
+	jnz	.next_sector
 
-	test 	cx, cx
-	jz 		.not_found			;所有根目录中都没有loader
-
-.not_found:
-	push	NoLoader
-	push	0301h
-	call 	DispStr
-	add		sp, 4
+.not_found:	
+	mov		word [ss:bp+2], 0
+	jmp		.done
+.find_loader:		
+	mov		word [ss:bp+2], si
 	jmp		.done
 
-.find_loader:	
-	push	LoaderName
-	push	0301h
-	call 	DispStr
-	add		sp, 4
-	jmp		.done
-
-
-.done
+.done:
+	pop		si
+	pop		bp
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax	
 	ret
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 字符串比较
 ;; 参数1， word, 第1个字符串地址
 ;; 参赛2， word, 第2个子讽刺地址
@@ -172,9 +166,9 @@ CmpStr:
 	
 	mov 	bp, sp
 	add		bp, 8	
-	mov		cx,	[ss:bp+2]
+	mov		cx, [ss:bp+2]
 	mov		si, [ss:bp+4]
-	mov		di,	[ss:bp+6]
+	mov		di, [ss:bp+6]
 	cld
 	repe 	cmpsb 
 	
@@ -237,7 +231,10 @@ LOADER_NAME_LEN		EQU	11
 DIR_ENTRY_SIZE		EQU	32				; 每个根目录数据占用字节数
 EntCntPerSector		EQU	16				; 每个扇区目录数目
 DirStartSectNo		EQU	19				; 根目录数据起始扇区号 ，1+	BPB_NumFATs * BPB_FATSz16	
-LoaderName: 		db 	"loader  bin"
+DIR_FileSizeOffset	EQU 1ch				; 根目录数据中文件大小地址偏移
+DIR_FstClusOffset	equ 1ah				; 根目录数据中开始簇号地址偏移
+
+LoaderName: 		db 	"LOADER  BIN"
 NoLoader: 			db 	"no loader  "
 BootMessage:		db	"Hello,FLY !"
 times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
