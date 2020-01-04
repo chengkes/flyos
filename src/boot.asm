@@ -22,7 +22,7 @@ org	07c00h			; 告诉编译器程序加载到7c00处
 	BS_VolID		DD 0			; 卷序列号
 	BS_VolLab		DB 'Tinix0.01  '; 卷标, 必须 11 个字节
 	BS_FileSysType	DB 'FAT12   '	; 文件系统类型, 必须 8个字节  
-
+ 
 LABEL_START:	
 	mov		ax, cs
 	mov		ds, ax
@@ -36,25 +36,26 @@ LABEL_START:
 	add 	sp, 4	
 	
 	; 复位软驱
-    xor 	ah, ah
-    xor 	dl, dl                  ;驱动器号A盘
-    int 	13h
+	xor 	ah, ah
+	xor 	dl, dl                  ;驱动器号A盘
+	int 	13h
 
-	; 读取软盘扇区数据
-	; push	1			; 读1个扇区的数据
-	; push	0			; 从0号扇区开始
-	; push	ds			; 数据存放在DS：09000处
-	; push	BUFF_ADDR
-	; call	ReadSector		
-	; add 	sp, 8	
+	; push	LoaderName
+	; push	LoaderName
+	; push	10
+	; call 	CmpStr
+	; add		sp, 4
+	; pop		ax				; 获取CmpStr返回值
+	; test	ax, ax
+	; jnz		.next			; 不相等
 
-	push 	LOADER_NAME
-	push	0203h
-	call	DispStr			; 调用显示字符串例程
-	add 	sp, 4		
+	; push 	LoaderName
+	; push	0203h
+	; call	DispStr			; 调用显示字符串例程
+	; add 	sp, 4		
 
 	; 从软盘中读取文件到内存
-	push	LOADER_NAME
+	push	LoaderName
 	push	ds			; 数据存放在DS：08000处
 	push	LOADER_ADDR
 	call	ReadFile
@@ -96,7 +97,92 @@ DispStr:
 ;; 参赛3， word,  内存地址，段内偏移
 ReadFile:
 	; todo: 
+	mov 	bp, sp 
 	
+	mov		ax, [BPB_RootEntCnt]
+	mov		bl, EntCntPerSector
+	div		bl						; AH为余数， AL为商
+	test	ah, ah					
+	jz		.1						; 余数为0
+	inc		al	
+	xor		ah, ah
+.1:
+	mov		cx, ax					; 根目录占用扇区数目 = BPB_RootEntCnt / 16 +1 
+	mov		bx, DirStartSectNo		; FAT12根目录起始扇区号
+.next_sector:
+	; 读取扇数据
+	push	1			; 读1个扇区的数据
+	push	bx			  
+	push	ds			  
+	push	BUFF_ADDR
+	call	ReadSector		
+	add 	sp, 8	
+
+	mov		si, BUFF_ADDR
+	push	cx
+	mov		cx, EntCntPerSector
+.next_dir_entry:
+	push	LoaderName
+	push	si
+	push	LOADER_NAME_LEN
+	call	CmpStr
+	add		sp, 4
+	pop		ax
+	test	ax, ax
+	jz		.find_loader		; 找到loader
+	; 没有找到loader， 查看下一个根目录
+	add		si, DIR_ENTRY_SIZE 
+	loop	.next_dir_entry
+	pop		cx
+
+	inc		bx
+	loop	.next_sector
+
+	test 	cx, cx
+	jz 		.not_found			;所有根目录中都没有loader
+
+.not_found:
+	push	NoLoader
+	push	0301h
+	call 	DispStr
+	add		sp, 4
+	jmp		.done
+
+.find_loader:	
+	push	LoaderName
+	push	0301h
+	call 	DispStr
+	add		sp, 4
+	jmp		.done
+
+
+.done
+	ret
+
+;; 字符串比较
+;; 参数1， word, 第1个字符串地址
+;; 参赛2， word, 第2个子讽刺地址
+;; 参赛3， word, 字符串长度
+;; 结果： 相同时返回0 
+CmpStr:
+	push	bp
+	push	si
+	push	di
+	push	cx
+	
+	mov 	bp, sp
+	add		bp, 8	
+	mov		cx,	[ss:bp+2]
+	mov		si, [ss:bp+4]
+	mov		di,	[ss:bp+6]
+	cld
+	repe 	cmpsb 
+	
+	mov		[ss:bp+6], cx
+	pop		cx
+	pop		di
+	pop		si
+	pop		bp
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -122,7 +208,7 @@ ReadSector:
 	inc		ah
 	mov     cl, ah            ; 扇区
 	mov		dh, al
-	and		dh, 01h		  ; 磁头
+	and		dh, 01h		  	; 磁头
 	mov		ch, al
 	shr		ch, 1             ; 柱面
 
@@ -147,7 +233,12 @@ ReadSector:
 
 BUFF_ADDR			EQU	09000H
 LOADER_ADDR			EQU	08000H
-LOADER_NAME: 		db 	"loader  bin"
+LOADER_NAME_LEN		EQU	11
+DIR_ENTRY_SIZE		EQU	32				; 每个根目录数据占用字节数
+EntCntPerSector		EQU	16				; 每个扇区目录数目
+DirStartSectNo		EQU	19				; 根目录数据起始扇区号 ，1+	BPB_NumFATs * BPB_FATSz16	
+LoaderName: 		db 	"loader  bin"
+NoLoader: 			db 	"no loader  "
 BootMessage:		db	"Hello,FLY !"
 times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
 dw 	0xaa55					; 结束标志
