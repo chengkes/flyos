@@ -41,11 +41,12 @@ LABEL_START:
 	int 	13h
 	
 	; 从软盘中查找文件
-	push	NoLoader
+	push	LoaderName
 	call	SearchFile
 	pop		ax
 	test	ax, ax
 	jz		.not_found
+	; 找到loader文件
 	; todo
 	jmp 	.done
 .not_found:
