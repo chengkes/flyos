@@ -37,15 +37,15 @@ LABEL_START:
 	
 	; 复位软驱
         xor 	ah, ah
-        xor 	dl, dl                  ;驱动器号 A盘
+        xor 	dl, dl                  ;驱动器号A盘
         int 	13h
 
 	; 读取软盘扇区数据
-	push	1
-	push	0
-	push	cs
+	push	1			; 读1个扇区的数据
+	push	0			; 从0号扇区开始
+	push	ds			; 数据存放在DS：09000处
 	push	09000h
-	call	ReadSector
+	call	ReadSector		
 	add 	sp, 8	
 	
 	jmp	$			; 无限循环
@@ -55,13 +55,25 @@ LABEL_START:
 ;; 参数1：word，串地址
 ;; 参数2：word，显示位置，高位=行，低位=列
 DispStr:
-	mov	bp,sp
+	push 	ax
+	push	bx
+	push	cx
+	push	dx
+	push	bp
+
+	mov	bp, sp+10
 	mov	dx, [ss:bp+2]   	;(DH、DL)＝坐标(行、列)
 	mov	bp, [ss:bp+4]   	; ES:BP = 串地址
 	mov	cx, 10			; CX = 串长度
 	mov	ax, 01301h		; AH = 13,  AL = 01h
 	mov	bx, 000ch		; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
 	int	10h			; 10h 号中断 	
+
+	pop	bp
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
 	ret 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -71,21 +83,39 @@ DispStr:
 ;; 参赛3， word,  内存地址，段基址
 ;; 参赛4， word,  内存地址，段内偏移
 ReadSector: 	 
-	mov	bp, sp	
+	push 	ax
+	push	bx
+	push	cx
+	push	dx
+	push	bp
+	push 	es
+
+	mov	bp, sp		
+
+	; 根据开始扇区号计算柱面，磁头，扇区
+	mov	ax, [ss:bp+6]
+	mov	bx, [BPB_SecPerTrk]
+	div	bl
+	inc	ah
+	mov     cl, ah            ; 扇区
+	mov	dh, al
+	and	dh, 01h		  ; 磁头
+	mov	ch, al
+	shr	ch, 1             ; 柱面
+	        
 	mov	bx, [ss:bp+2]	; ES:BX=缓冲区的地址  
 	mov	es, [ss:bp+4]	
 	mov	ax, [ss:bp+8]	; AL=读取扇区数目
-
-	;div 	[BPB_SecPerTrk]
-	
-    mov     ch, 0            ; 柱面
-    mov     cl, 0            ; 扇区
-    mov     dh, 0            ; 磁头
- 		        
 	xor     dl,dl           ; 驱动器号
-    mov     ah, 02h         ; 功能号，读扇区        
-    int     13h	
+	mov     ah, 02h         ; 功能号，读扇区        
+	int     13h	
 		 
+	pop	es
+	pop	bp
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
 	ret
 
 
