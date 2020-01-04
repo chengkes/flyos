@@ -75,17 +75,16 @@ ReadSector:
 	mov	bx, [ss:bp+2]	; ES:BX=缓冲区的地址  
 	mov	es, [ss:bp+4]	
 	mov	ax, [ss:bp+8]	; AL=读取扇区数目
-	
-	
+
 	;div 	[BPB_SecPerTrk]
 	
-        mov     ch, 0            ; 柱面
-        mov     cl, 0            ; 扇区
-        mov     dh, 0            ; 磁头
+    mov     ch, 0            ; 柱面
+    mov     cl, 0            ; 扇区
+    mov     dh, 0            ; 磁头
  		        
 	xor     dl,dl           ; 驱动器号
-        mov     ah, 02h         ; 功能号，读扇区        
-        int     13h	
+    mov     ah, 02h         ; 功能号，读扇区        
+    int     13h	
 		 
 	ret
 
