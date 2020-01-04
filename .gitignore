@@ -56,3 +56,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+src/run/bochsout.txt
+.swp
+src/run/os.img
+src/run/os.img
