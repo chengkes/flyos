@@ -46,8 +46,13 @@ LABEL_START:
 	pop		ax
 	test	ax, ax
 	jz		.not_found
-	; 找到loader文件
-	; todo
+	; 找到loader文件, 加载到内存 
+	push	ax
+	push	ds
+	push	LOADER_ADDR
+	call 	LoadFile2Mem
+	add		sp, 4
+	jmp		LOADER_ADDR				; 跳转到loader
 	jmp 	.done
 .not_found:
 	push	NoLoader
@@ -56,6 +61,86 @@ LABEL_START:
 	add		sp, 4
 .done:
 	jmp		$			; 无限循环
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 加载文件到内存
+;; 参数1： word, 文件目录数据地址
+;; 参赛2， word, 加载到内存地址，段基址
+;; 参赛3， word, 加载到内存地址，段内偏移
+LoadFile2Mem: 
+	push 	ax
+	push	bx
+	push	cx
+	push	dx
+	push	bp
+	mov 	bp, sp
+	add		bp, 10
+
+	mov		ax, [BPB_RootEntCnt]
+	mov		bl, EntCntPerSector
+	div		bl						; AH为余数， AL为商
+	test	ah, ah					
+	jz		.1						; 余数为0
+	inc		al	
+	xor		ah, ah					
+.1:	
+	mov		dx, ax					; DX = 根目录区占用扇区数
+	mov		bx, [ss:bp+6]   		
+	add		bx, DIR_FstClusOffset	
+	mov		bx, [bx]				; BX = 开始簇号
+
+	add		bx, ax
+	add		ax, DirStartSectNo
+	sub		ax, 2					; AX=开始扇区号
+	mov		cx, [ss:bp+2]			; 段内偏移
+
+.next:
+	push 	1
+	push	ax
+	mov		ax, [ss:bp+4]
+	push	ax				; 段基址	
+	push	cx				; 段内偏移
+	call	ReadSector
+	add		sp, 8
+
+	; bx=下一个簇号,
+	push	bx
+	call	NextClus
+	pop		bx
+
+	cmp		bx, 0FF7h			; 是否为最后一个扇区 
+	jz 		.bad_data			; 簇号0FF7h,是坏簇 
+	ja		.done				; 簇号大于或等于0xFF8,结束
+	xor		ax, ax
+	add		ax, dx
+	add		ax, bx
+	add		ax, DirStartSectNo
+	sub		ax, 2		 		;ax = 扇区号
+	add		cx, [BPB_BytsPerSec]
+	jmp 	.next
+.bad_data:
+
+.done:
+	pop		bp
+	pop		dx
+	pop		cx
+	pop		bx
+	pop 	ax
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; FAT12中，根据当前簇号计算下一个簇号
+;; 参数1：word，当前簇号
+;; 返回：word，下一个簇号
+NextClus:
+
+	mov		bp, sp
+	mov		ax, [ss:sp+2]
+	div		1024
+	
+
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 显示字符串，字符串长度必须为10
@@ -104,7 +189,7 @@ SearchFile:
 	test	ah, ah					
 	jz		.1						; 余数为0
 	inc		al	
-	xor		ah, ah
+	xor		ah, ah					; ax = 根目录区占用扇区数
 .1:
 	mov		bx, DirStartSectNo		; FAT12根目录起始扇区号
 .next_sector:

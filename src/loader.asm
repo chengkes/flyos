@@ -1,5 +1,7 @@
-org 0100h
-
+; org 0100h
+    jmp LABEL_START
+    times 512 db 0
+LABEL_START:
     mov ax, 0b800h
     mov es, ax
     mov al, 'B'
