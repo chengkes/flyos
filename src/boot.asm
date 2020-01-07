@@ -29,12 +29,7 @@ LABEL_START:
 	mov		es, ax
 	mov		ss, ax
 	mov		sp, 07c00h
- 
-	push 	BootMessage
-	push	0103h
-	call	DispStr			; 调用显示字符串例程
-	add 	sp, 4	
-	
+
 	; 复位软驱
 	xor 	ah, ah
 	xor 	dl, dl                  ;驱动器号A盘
@@ -55,10 +50,13 @@ LABEL_START:
 	jmp		LOADER_ADDR				; 跳转到loader
 	jmp 	.done
 .not_found:
-	push	NoLoader
-	push	0201h
-	call 	DispStr
-	add		sp, 4
+	mov		bp,	NoLoader
+	mov		dx,	0201h
+	mov		cx, 9			; CX = 串长度
+	mov		ax, 01301h		; AH = 13,  AL = 01h
+	mov		bx, 000ch		; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
+	int		10h				; 10h 号中断 	
+ 
 .done:
 	jmp		$			; 无限循环
 
@@ -134,40 +132,45 @@ LoadFile2Mem:
 ;; 参数1：word，当前簇号
 ;; 返回：word，下一个簇号
 NextClus:
-
-	mov		bp, sp
-	mov		ax, [ss:sp+2]
-	div		1024
-	
-
-	ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 显示字符串，字符串长度必须为10
-;; 参数1：word，串地址
-;; 参数2：word，显示位置，高位=行，低位=列
-DispStr:
+	push 	bp
 	push 	ax
 	push	bx
-	push	cx
 	push	dx
-	push	bp
-
 	mov		bp, sp
-	add		bp, 10
-	mov		dx, [ss:bp+2]   	;(DH、DL)＝坐标(行、列)
-	mov		bp, [ss:bp+4]   	; ES:BP = 串地址
-	mov		cx, 10			; CX = 串长度
-	mov		ax, 01301h		; AH = 13,  AL = 01h
-	mov		bx, 000ch		; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
-	int		10h			; 10h 号中断 	
+	add		bp, 8
+	
+	mov		ax, [ss:bp+2]
+	mov		cx, ax
+	mov		bx, 3
+	shr		ax, 1		
+	xor		dx, dx
+	mov		bx, 512
+	div		bx
 
-	pop		bp
-	pop		dx
-	pop		cx
+	inc		ax
+	push	2
+	push	ax
+	push	ds
+	push	BUFF_ADDR
+	call	ReadSector
+	add		sp, 8
+
+	mov		bx, dx
+	add		bx, BUFF_ADDR
+	mov 	ax, [ds: bx]
+
+	test	cx, 01h
+	jz		.even      ; 奇数
+	jmp		.done
+.even: 
+	shr		ax, 4
+.done:
+	and		ax, 0fffh
+	mov	[ss:bp+2], ax
 	pop		bx
 	pop		ax
-	ret 
+	pop 	bp
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 从FAT12格式软盘根目录区 查找文件 
@@ -321,8 +324,6 @@ DIR_FileSizeOffset	EQU 1ch				; 根目录数据中文件大小地址偏移
 DIR_FstClusOffset	equ 1ah				; 根目录数据中开始簇号地址偏移
 
 LoaderName: 		db 	"LOADER  BIN"
-NoLoader: 			db 	"no loader  "
-BootMessage:		db	"Hello,FLY !"
+NoLoader: 			db 	"NoLoader"
 times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
 dw 	0xaa55					; 结束标志
-
