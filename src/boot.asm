@@ -34,11 +34,9 @@ LABEL_START:
 	xor 	ah, ah
 	xor 	dl, dl                  ;驱动器号A盘
 	int 	13h
-	
-	; 从软盘中查找文件
-	push	LoaderName
+
+	; 从软盘中查找文件 
 	call	SearchFile
-	pop		ax
 	test	ax, ax
 	jz		.not_found
 	; 找到loader文件, 加载到内存 
@@ -48,17 +46,15 @@ LABEL_START:
 	call 	LoadFile2Mem
 	add		sp, 4
 	jmp		LOADER_ADDR				; 跳转到loader
-	jmp 	.done
+
 .not_found:
 	mov		bp,	NoLoader
 	mov		dx,	0201h
 	mov		cx, 9			; CX = 串长度
 	mov		ax, 01301h		; AH = 13,  AL = 01h
 	mov		bx, 000ch		; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
-	int		10h				; 10h 号中断 	
- 
-.done:
-	jmp		$			; 无限循环
+	int		10h				; 10h 号中断 			
+	jmp		$				; 无限循环
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -87,8 +83,8 @@ LoadFile2Mem:
 	mov		bx, [ss:bp+6]   		
 	add		bx, DIR_FstClusOffset	
 	mov		bx, [bx]				; BX = 开始簇号
-
-	add		bx, ax
+ 
+	add		ax, bx
 	add		ax, DirStartSectNo
 	sub		ax, 2					; AX=开始扇区号
 	mov		cx, [ss:bp+2]			; 段内偏移
@@ -135,13 +131,15 @@ NextClus:
 	push 	bp
 	push 	ax
 	push	bx
+	push	cx
 	push	dx
 	mov		bp, sp
-	add		bp, 8
+	add		bp, 10
 	
 	mov		ax, [ss:bp+2]
 	mov		cx, ax
 	mov		bx, 3
+	mul		bx
 	shr		ax, 1		
 	xor		dx, dx
 	mov		bx, 512
@@ -160,32 +158,25 @@ NextClus:
 	mov 	ax, [ds: bx]
 
 	test	cx, 01h
-	jz		.even      ; 奇数
+	jnz		.even      ; 奇数
 	jmp		.done
 .even: 
 	shr		ax, 4
 .done:
 	and		ax, 0fffh
-	mov	[ss:bp+2], ax
+	mov		[ss:bp+2], ax
+	pop		dx
+	pop		cx
 	pop		bx
 	pop		ax
 	pop 	bp
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 从FAT12格式软盘根目录区 查找文件 
-;; 参数1， word， 文件名，11个字节，文件名和扩展名用空格分开
-;; 返回： 目录数据偏移地址
-SearchFile:
-	push	ax
-	push	bx
-	push	cx
-	push	dx
-	push	bp
-	push	si	 
-	mov 	bp, sp 
-	add		bp, 12
-
+;; 从FAT12格式软盘根目录区 查找Loader.bin文件 
+;; 返回： AX=目录数据偏移地址,没有找到时AX=0
+SearchFile:	 
+	mov 	bp, sp  
 	mov		ax, [BPB_RootEntCnt]
 	mov		bl, EntCntPerSector
 	div		bl						; AH为余数， AL为商
@@ -207,7 +198,7 @@ SearchFile:
 	mov		si, BUFF_ADDR
 	mov		cx, EntCntPerSector
 .next_dir_entry:
-	mov		dx,[ss:bp+2]
+	mov		dx, LoaderName
 	push	dx
 	push	si
 	push	LOADER_NAME_LEN
@@ -226,19 +217,13 @@ SearchFile:
 	jnz	.next_sector
 
 .not_found:	
-	mov		word [ss:bp+2], 0
+	mov		ax, 0
 	jmp		.done
 .find_loader:		
-	mov		word [ss:bp+2], si
+	mov		ax, si
 	jmp		.done
 
-.done:
-	pop		si
-	pop		bp
-	pop		dx
-	pop		cx
-	pop		bx
-	pop		ax	
+.done:	
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

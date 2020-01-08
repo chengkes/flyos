@@ -1,2 +1,3 @@
-b 0x7c62
+b 0x7c00
+trace-reg on
 c 
