@@ -18,7 +18,6 @@
 	BS_VolLab		DB 'Tinix0.01  '; 卷标, 必须 11 个字节
 	BS_FileSysType	DB 'FAT12   '	; 文件系统类型, 必须 8个字节  
 
-
     DirEntCntPerSector	EQU	16				; 每个扇区目录数目
 	DIR_NAME_LEN		EQU	11
     DIR_ENTRY_SIZE		EQU	32				; 每个根目录数据占用字节数

@@ -247,3 +247,4 @@ ReadSector:
 
 BUFF_ADDR			EQU	08000H 
 LoaderBase			EQU	09000H    
+LoaderOffset		EQU	0100h

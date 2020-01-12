@@ -50,8 +50,6 @@ LABEL_START:
  
 %include "lib.inc"
 	
-
-LoaderOffset		EQU	0 
 LoaderName: 		db 	"LOADER  BIN"
 NoLoader: 			db 	"NoLoader"
 NoLoaderLen         equ  $ - NoLoader

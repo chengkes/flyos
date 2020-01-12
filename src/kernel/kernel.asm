@@ -1,6 +1,9 @@
-    mov     ax, 0b800h
-    mov     es, ax
+[section .text]  
+
+global  _start
+
+_start:
     mov     al, 'K'
     mov     ah, 0ch
-    mov     [es:(80*2+5)*2], ax
+    mov     [gs:(80*2+5)*2], ax
     jmp     $

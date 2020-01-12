@@ -1,10 +1,10 @@
-; load kernel to memory
+org LoaderOffset
 LABEL_START:
     mov		ax, cs
 	mov		ds, ax
 	mov		es, ax
 	mov		ss, ax
-	mov		sp, StackTop
+	mov		sp, LoaderOffset
 
     ; 从软盘中查找kernel文件 
 	push	KernelName
@@ -19,17 +19,24 @@ LABEL_START:
 	call 	LoadFile2Mem
 	add		sp, 6
 
-    ; todo , its a test
-    mov     ax, 0b800h
-    mov     es, ax
-    mov     al, 'K'
-    mov     ah, 0ch
-    mov     [es:(80*2+5)*2], ax
+    ; 关闭软驱马达
+    mov     dx, 03f2h
+    xor     al, al
+    out     dx, al
+
+    ; todo , 获取内存信息， setupPagging  
 
     ; 跳入保护模式
-    
-
-    jmp     $
+    lgdt    [GdtPtr]
+    cli                         ; 关中断
+    in      al, 92h
+    or	    al, 00000010b
+    out     92h, al             ; 打开地址线A20
+    mov     eax, cr0
+    or      al, 01h
+    mov     cr0, eax
+    jmp     dword    SelectorC32: LABEL_PM_START+LoaderBase*10h
+   
 .not_found:
     mov		bp,	NoKernel
 	mov		dx,	0301h       ; 显示位置（dh,dl） = （行，列）
@@ -43,25 +50,41 @@ LABEL_START:
 %include "lib.inc"
     KernelBase          equ 3000h
     kernelOffset        equ 0
-    StackTop            equ 9fffh
-    KernelName: 		db 	"KERNEL  O  "
+    KernelName: 		db 	"KERNEL  BIN"
     NoKernel: 			db 	"NoKernel"
     NoKernelLen         equ  $ - NoKernel
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 %include "pm.inc"
 [section .gdt]
+BITS 32
     LABEL_GDT:             Descriptor      0, 0, 0
     LABEL_DESC_D32:        Descriptor      0, 0fffffh, DA_DRW | DA_32 | DA_LIMIT_4K
     LABEL_DESC_C32:        Descriptor      0, 0fffffh, DA_CR | DA_32 | DA_LIMIT_4K
-    LABEL_DESC_VIDEO:      Descriptor      0b8000h, 0ffffh, DA_DRWA
-    GdtPtr      dw $ - LABEL_GDT - 1            ; GDT界限    
+    LABEL_DESC_VIDEO:      Descriptor      0b8000h, 0ffffh, DA_DRWA | DA_DPL3
+    GdtLen      equ $ - LABEL_GDT
+    GdtPtr      dw GdtLen - 1            ; GDT界限    
                 dd LoaderBase*10h + LABEL_GDT   ; GDT基址  
     SelectorD32         equ   LABEL_DESC_D32 - LABEL_GDT 
     SelectorC32         equ   LABEL_DESC_C32 - LABEL_GDT 
     SelectorVideo       equ   LABEL_DESC_VIDEO - LABEL_GDT + SA_RPL3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+[section .stack32]
+LABEL_STACK     times  2048  db 0
+StackTop        equ LoaderBase*10h + $    
 
 [section .s32]
+BITS 32
+LABEL_PM_START: 
+    mov     ax, SelectorD32
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax
+    mov     ss, ax
+    mov     esp, StackTop
 
-    jmp $
-
+    mov     ax, SelectorVideo
+    mov     gs, ax
+    mov	    ah, 0Ch				; 0000: 黑底    1100: 红字
+	mov	    al, 'P'
+    mov     [gs:(80*5+9)*2] , ax
+    jmp     $
