@@ -1,4 +1,5 @@
-ASM= yasm 
+ASM=yasm 
+KenerlEntry=0x30400			# ; 必须与boot/loader.asm中一致
 
 run/os.img:run/boot.bin run/loader.bin run/kernel.bin
 	dd if=$< of=$@ conv=notrunc
@@ -14,7 +15,7 @@ run/loader.bin:boot/loader.asm boot/fat12.inc boot/lib.inc boot/pm.inc
 	$(ASM) $< -o $@ 
 
 run/kernel.bin:run/kernel.o
-	ld -m elf_i386 -s $< -o $@ 
+	ld -m elf_i386 -s -Ttext $(KenerlEntry) $< -o $@ 
 
 run/kernel.o:kernel/kernel.asm
 	$(ASM) -f elf $< -o $@

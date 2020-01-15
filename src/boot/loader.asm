@@ -48,7 +48,7 @@ LABEL_START:
 
 %include "fat12.inc"
 %include "lib.inc"
-    KernelBase          equ 3000h
+    KernelBase          equ 7000h
     kernelOffset        equ 0
     KernelName: 		db 	"KERNEL  BIN"
     NoKernel: 			db 	"NoKernel"
@@ -80,11 +80,70 @@ LABEL_PM_START:
     mov     es, ax
     mov     fs, ax
     mov     ss, ax
-    mov     esp, StackTop
-
     mov     ax, SelectorVideo
     mov     gs, ax
-    mov	    ah, 0Ch				; 0000: 黑底    1100: 红字
-	mov	    al, 'P'
-    mov     [gs:(80*5+9)*2] , ax
-    jmp     $
+    mov     esp, StackTop
+
+    ;; 重新放置内核
+    mov     ebx, [KernelBase*10h+kernelOffset+ePhOff]     ;Program Header开始地址
+    add     ebx, KernelBase*10h+kernelOffset 
+    mov     dx, [KernelBase*10h+kernelOffset+ePhEntSize ]   
+    and     edx, 0ffffh
+    mov     cx, [KernelBase*10h+kernelOffset+ePhNum ]     ;Program Header数目
+.next_ph:   
+    mov     ax, [ebx + pFilesize]       ; 段长度
+    push    ax  
+    mov     eax, [ebx + pOffset]               ; 段在ELF文件中偏移
+    add     eax, KernelBase*10h+kernelOffset
+    push    eax  
+    mov     eax, [ebx  + pVaddr]           ; 段加载后虚拟地址
+    push    eax
+    call    _memCpy
+    add     esp, 10
+    dec     cx
+    test    cx, cx      ; 是否复制完ELF中所有段
+    jz      .done    
+    add     ebx, edx    
+    jmp     .next_ph
+
+.done:
+    jmp     SelectorC32: KenerlEntry        ; 跳转到kernel
+
+;; ELF文件 变量定义
+KenerlEntry     equ  0x30400    ; 必须与makefile中一致
+ePhOff          equ  28             ; ProgramHader位置 偏移  
+ePhEntSize      equ  42             ; 每个ProgramHeader大小 偏移
+ePhNum          equ  44             ; ProgramHader数目 偏移
+
+pOffset         equ   4         ; 每个ProgramHader中，段起始位置 偏移
+pVaddr          equ   8         ; 每个ProgramHader中，段加载后虚拟地址 偏移
+pFilesize       equ   16        ; 每个ProgramHader中，段大小 偏移
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 复制一段内存 void MemCpy(void* toAddr, void* fromAddr, u16 )
+;; 参数1： 内存目的地址 
+;; 参数2： 内存源地址
+;; 参数3： 复制内存长度，以字节为单位
+_memCpy:
+    push    ebp
+    push    edi
+    push    esi
+    push    cx
+    mov     ebp, esp
+    add     ebp, 14
+
+    mov     edi, [ebp+4]
+    mov     esi, [ebp+8]
+    mov     cx, [ebp+12]         ;复制内存长度
+.goon:
+    test    cx, cx
+    jz      .done
+    movsb    
+    dec     cx
+    jmp     .goon
+.done:
+    pop     cx
+    pop     esi
+    pop     edi
+    pop     ebp
+    ret
+    
