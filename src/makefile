@@ -14,14 +14,23 @@ run/boot.bin:boot/boot.asm boot/fat12.inc boot/lib.inc
 run/loader.bin:boot/loader.asm boot/fat12.inc boot/lib.inc boot/pm.inc
 	$(ASM) $< -o $@ 
 
-run/kernel.bin:run/kernel.o
-	ld -m elf_i386 -s -Ttext $(KenerlEntry) $< -o $@ 
+run/kernel.bin:run/kernel.o run/klibc.o
+	ld -m elf_i386 -s -Ttext $(KenerlEntry) $^ -o $@ 
 
 run/kernel.o:kernel/kernel.asm
 	$(ASM) -f elf $< -o $@
+
+run/klibc.o:kernel/klibc.c
+	gcc -m32 -c $< -o $@ 
 
 run:run/os.img
 	bochs -q -f run/bochsrc -rc run/debug.txt
 
 clean:
 	rm -f run/*.bin run/*.o  run/bochsout.txt
+
+run/test:test/test.c
+	gcc $< -o $@ 
+
+test: run/test
+	
