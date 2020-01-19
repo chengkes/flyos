@@ -17,10 +17,10 @@ run/loader.bin:boot/loader.asm boot/fat12.inc boot/lib.inc boot/pm.inc
 run/kernel.bin:run/kernel.o run/klibc.o
 	ld -m elf_i386 -s -Ttext $(KenerlEntry) $^ -o $@ 
 
-run/kernel.o:kernel/kernel.asm
+run/kernel.o:kernel/kernel.asm kernel/klibc.c
 	$(ASM) -f elf $< -o $@
 
-run/klibc.o:kernel/klibc.c
+run/klibc.o:kernel/klibc.c kernel/kernel.asm
 	gcc -m32 -c $< -o $@ 
 
 run:run/os.img
@@ -29,8 +29,4 @@ run:run/os.img
 clean:
 	rm -f run/*.bin run/*.o  run/bochsout.txt
 
-run/test:test/test.c
-	gcc $< -o $@ 
-
-test: run/test
 	
