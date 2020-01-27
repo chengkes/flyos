@@ -1,7 +1,8 @@
-ASM=yasm 
+ASM=nasm 
 KenerlEntry=0x30400			# ; 必须与boot/loader.asm中一致
 
 run/os.img:run/boot.bin run/loader.bin run/kernel.bin
+	dd if=/dev/zero of=$@ bs=1024 count=1440
 	dd if=$< of=$@ conv=notrunc
 	sudo mount $@ /mnt/floppy -o loop
 	sudo cp run/loader.bin /mnt/floppy
@@ -27,6 +28,9 @@ run:run/os.img
 	bochs -q -f run/bochsrc -rc run/debug.txt
 
 clean:
-	rm -f run/*.bin run/*.o  run/bochsout.txt
+	rm -f run/*.bin run/*.o  run/bochsout.txt run/os.img
 
-	
+run/kernel.bin.asm:run/kernel.bin 
+	ndisasm $<  -o $(KenerlEntry) -u -e 0x400 > $@ 
+
+disasm:run/kernel.bin.asm

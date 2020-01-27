@@ -1,3 +1,4 @@
 b 0x30400
+b 0x00030468
 trace-reg on
 c 
