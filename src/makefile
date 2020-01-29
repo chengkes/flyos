@@ -1,4 +1,4 @@
-ASM=nasm 
+ASM=yasm 
 KenerlEntry=0x30400			# ; 必须与boot/loader.asm中一致
 
 run/os.img:run/boot.bin run/loader.bin run/kernel.bin

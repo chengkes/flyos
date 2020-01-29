@@ -3,6 +3,15 @@ BITS 32
     times 2048 db 0
 StackTop :
 
+PCB_LDT_SEL   equ   18*4                 
+PCB_SS        equ   15*4         
+PCB_P_ESP     equ   16*4          
+PCB_EFLAGS    equ   14*4             
+PCB_CS        equ   13*4         
+PCB_EIP       equ   12*4 
+
+TSS_ESP0      equ   4
+
 [section .text]  
 
 global  _start
@@ -15,11 +24,12 @@ global  keyboardHandler
 
 extern gdtPtr
 extern idtPtr
-extern osinit
 extern dispPos  
+extern pcbs
+extern tss
 
-extern processA
-extern processB
+extern osinit
+extern osmain
 
 _start:
     mov     esp, StackTop       ; 重新设置
@@ -34,9 +44,21 @@ _start:
 ; osstart:
     ; mov     al, 'A'
     ; mov     ah, 0ch
-    ; mov     [gs:160*1+2*1], ax    
-    
-    sti
+    ; mov     [gs:160*1+2*1], ax   
+
+    ; sti
+
+    ; ring0 -> ring1 进入ring3并调用进程
+    mov     eax, [pcbs + PCB_LDT_SEL]
+    lldt    ax 
+    mov     ax, 020h                ; 参见klibc.c 中 GDT_SELECTOR_TSS
+    ltr     ax
+    push    dword [pcbs + PCB_SS]       ; ss入栈
+    push    dword [pcbs + PCB_P_ESP]    ; esp入栈
+    push    dword [pcbs + PCB_EFLAGS]   ; eflags入栈
+    push    dword [pcbs + PCB_CS]       ; cs入栈,  
+    push    dword [pcbs + PCB_EIP]      ; eip入栈
+    iretd
 
 .wait:
     hlt
@@ -93,7 +115,7 @@ outByte:
 ;；----- 8059A 硬件中断处理程序 ---------------------------
 clockHandler:        
     push    eax
-    inc byte     [gs:2]     
+    inc     byte [gs:2]     
     mov     al, 20h
     out     20h, al      ; SEND EOI
     pop     eax  
@@ -103,12 +125,12 @@ clockHandler:
     ; push    eax
     ; push    processA
     ; retf
-    mov  dword   [ss:esp] , processA
+    ; mov  dword   [ss:esp] , processA
     iretd
 
 keyboardHandler:
     push    eax
-    inc byte     [gs:0] 
+    inc     byte [gs:0] 
     in      al, 60h
     mov     al, 20h
     out     20h, al      ; SEND EOI
