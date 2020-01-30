@@ -110,7 +110,8 @@ outByte:
     ret    
 
 ;；----- 8059A 硬件中断处理程序 ---------------------------
-clockHandler:       
+clockHandler:      
+    cli
      ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
     push    fs
     push    es
@@ -141,7 +142,7 @@ keyboardHandler:
 
 Handler:    
     iretd
- 
+  
 ;；----- 系统异常 中断处理程序 ---------------------------
 
 

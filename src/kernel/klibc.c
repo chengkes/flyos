@@ -312,7 +312,7 @@ void processA(){
         dispChar(a, 0x0c);
         a++;
         dispPos -= 2;
-        for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
+        // for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
@@ -322,7 +322,7 @@ void processB(){
         dispChar(a, 0x0c);
         a++;
         dispPos -= 2;
-        for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
+        // for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
