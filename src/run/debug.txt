@@ -1,3 +1,2 @@
 b 0x30400
-trace-reg on
 c 

@@ -67,7 +67,7 @@
 // GDT中 选择子
 #define GDT_SELECTOR_D32        0x08    // 数据段 选择子
 #define GDT_SELECTOR_C32        0x10    // 代码段 选择子
-#define GDT_SELECTOR_VEDIO      0x18    // 视频段 选择子
+#define GDT_SELECTOR_VIDEO      (0x18 | SA_RPL3)    // 视频段 选择子
 #define GDT_SELECTOR_TSS        0x20    // TSS 选择子
 #define GDT_SELECTOR_LDT        0x28    // LDT 选择子
 
@@ -78,9 +78,9 @@
 // IDT 大小
 #define IDT_SIZE 256
 // 进程控制块 大小
-#define PCB_SIZE 10
+#define PCB_SIZE 2
 // 进程堆栈 大小
-#define PROCESS_STACK_SIZE 2048
+#define PROCESS_STACK_SIZE 9216
 
 //////////////////////////////////////
 
@@ -145,31 +145,31 @@ typedef struct _TSS {
 
 // 进程控制块
 typedef struct _PCB {
-    u32 eax;
-    u32 ecx;
-    u32 edx;
-    u32 ebx; 
-    u32 esp;  // pusha 指令执行前的值 
-    u32 ebp;
+    u32 edi;  
     u32 esi;
-    u32 edi;  // 7
+    u32 ebp;
+    u32 esp;  
+    u32 ebx; 
+    u32 edx;
+    u32 ecx;
+    u32 eax;
 
     u32 ds;
     u32 es;
     u32 fs;
-    u32 gs;  // 11
+    u32 gs;   
 
-    u32 eip;  
+    u32 eip;   
     u32 cs;   
     u32 eflags;
+    u32 p_esp;    
     u32 ss;
-    u32 p_esp;   // 16 
 
-    u32 entry;    
-    u32  ldtSel; // 18
+    u16  ldtSel; // 17
     Descriptor ldt[2];
+    u32 entry;    
     char name[16];
-    char pstack[PROCESS_STACK_SIZE];       
+    u8 pstack[PROCESS_STACK_SIZE];       
 } PCB ;
 
 
@@ -184,6 +184,7 @@ u32 dispPos;        // 字符显示位置
 
 TSS tss;
 PCB pcbs[PCB_SIZE];
+PCB* currentPcb;
 ///-----------------------------------
 
 //////////////////////////////////////
@@ -227,19 +228,21 @@ void osinit(){
 
     initPCB(&pcbs[0], (u32)processA, GDT_SELECTOR_LDT);
     initPCB(&pcbs[1], (u32)processB, GDT_SELECTOR_LDT + sizeof(Descriptor));
+    currentPcb = &pcbs[1];
 
-    for (int i=0; i<12; i++)    dispChar('a', 0x0c); // this is for test 
+    for (int i=0; i<4; i++)    dispChar('a', 0x0c); // this is for test 
+    dispPos += 4;
 }
 
 void initPCB(PCB* pcb, u32 entry, u32 ldtSel) {    
-    initDescriptor(&pcb->ldt[GDT_SELECTOR_D32 >> 3], 0, 0xfffff, DA_DRW | DA_DPL1, DA_LIMIT_4K | DA_32);
-    initDescriptor(&pcb->ldt[GDT_SELECTOR_C32 >> 3], 0, 0xfffff, DA_CR | DA_DPL1, DA_LIMIT_4K | DA_32);
+    initDescriptor(&pcb->ldt[LDT_SELECTOR_D32 >> 3], 0, 0xfffff, DA_DRW | DA_DPL1, DA_LIMIT_4K | DA_32);
+    initDescriptor(&pcb->ldt[LDT_SELECTOR_C32 >> 3], 0, 0xfffff, DA_CR | DA_DPL1, DA_LIMIT_4K | DA_32);
     initDescriptor(&gdt[ldtSel>>3], (u32)(&pcb->ldt), sizeof(Descriptor)*LDT_SIZE - 1, DA_LDT | DA_DPL1, 0);
 
     pcb->ldtSel = ldtSel;
     pcb->cs = LDT_SELECTOR_C32;
     pcb->ss = pcb->ds = pcb->es = pcb->fs = LDT_SELECTOR_D32;
-    pcb->gs = GDT_SELECTOR_VEDIO;
+    pcb->gs = GDT_SELECTOR_VIDEO;
     pcb->eflags = 0x1202 ; // IOPL=1, IF=1
     pcb->entry = pcb->eip = entry;
     pcb->p_esp = (u32)(pcb->pstack+PROCESS_STACK_SIZE);
@@ -259,7 +262,7 @@ void init8259a(){
     outByte(0x01, PORT_8259A_PRIMARY2);     // 写ICW4
     outByte(0x01, PORT_8259A_ATTACH2);
 
-    outByte(0x0fc, PORT_8259A_PRIMARY2);     // 写OCW1, 主片仅打开时钟中断
+    outByte(0x0fe, PORT_8259A_PRIMARY2);     // 写OCW1, 主片仅打开时钟中断
     outByte(0x0ff, PORT_8259A_ATTACH2);      // 写OCW1, 从片屏蔽所有中断 
 }
 
@@ -323,3 +326,15 @@ void processB(){
     }
 }
 
+void showMsg(){
+    // char* name= "t";
+    // while(*name != 0) {
+    //     dispChar(*name, 0x0c);
+    //     name++;
+    // }
+
+    // dispPos -= 2;
+
+    // currentPcb++;
+    // if (currentPcb > pcbs + PCB_SIZE)  currentPcb=pcbs;
+}
