@@ -6,6 +6,7 @@
 #define PORT_8259A_MASTER2 0x21
 #define PORT_8259A_SLAVE1 0xA0
 #define PORT_8259A_SLAVE2 0xA1
+#define PORT_8259A_KEYBOARD_DATA 0x60
 
 // 外部中断对应中断号
 #define INT_VECTOR_IRQ0    0x20            
@@ -260,7 +261,7 @@ void osinit(){
     currentPcb = &pcbs[0];
 
     for (int i=0; i<4; i++)    dispChar('a', 0x0c); // todo:this is for test 
-    dispPos += 4;       // todo:this is for test 
+    dispPos = 160;       // todo:this is for test 
 }
 
 // 添加进程 
@@ -297,7 +298,7 @@ void init8259a(){
     outByte(0x01, PORT_8259A_MASTER2);     // 写ICW4
     outByte(0x01, PORT_8259A_SLAVE2);
 
-    outByte(0x0fc, PORT_8259A_MASTER2);     // 写OCW1, 主片仅打开时钟中断
+    outByte(0x0fd, PORT_8259A_MASTER2);     // 写OCW1, 主片仅打开时钟中断
     outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断 
 }
 
@@ -359,6 +360,7 @@ void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) {
 // 键盘中断处理程序， todo
 void keyboardHandler(){
     dispChar('!', 0x0c);
+    inByte(PORT_8259A_KEYBOARD_DATA);
 }
 
 // 时钟中断处理程序， todo
@@ -393,7 +395,7 @@ void processA(){
         dispChar(a, 0x0c);
         a++;
         if (a >  'Z') a = 'A';
-        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
+        for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
