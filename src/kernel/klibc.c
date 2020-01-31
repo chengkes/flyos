@@ -2,10 +2,10 @@
 /////////////////////////////////////////////
 
 // 中断控制器8259A 主片、从片端口号
-#define PORT_8259A_PRIMARY1 0x20
-#define PORT_8259A_PRIMARY2 0x21
-#define PORT_8259A_ATTACH1 0xA0
-#define PORT_8259A_ATTACH2 0xA1
+#define PORT_8259A_MASTER1 0x20
+#define PORT_8259A_MASTER2 0x21
+#define PORT_8259A_SLAVE1 0xA0
+#define PORT_8259A_SLAVE2 0xA1
 
 // 外部中断对应中断号
 #define INT_VECTOR_IRQ0    0x20            
@@ -71,6 +71,9 @@
 #define GDT_SELECTOR_TSS        0x20    // TSS 选择子
 #define GDT_SELECTOR_LDT        0x28    // LDT 选择子
 
+// 硬件中断总个数
+#define IRQ_COUNT 16
+
 // LDT 大小
 #define LDT_SIZE 3
 // GDT 大小
@@ -78,7 +81,7 @@
 // IDT 大小
 #define IDT_SIZE 256
 // 进程控制块 大小
-#define PCB_SIZE 2
+#define PCB_SIZE 3
 // 进程堆栈 大小
 #define PROCESS_STACK_SIZE 0x8000
 
@@ -187,6 +190,8 @@ PCB pcbs[PCB_SIZE];
 PCB* currentPcb;
 
 u32 isInt ;    // 是否在处理中断程序
+
+u32 hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序表
 ///-----------------------------------
 
 //////////////////////////////////////
@@ -194,28 +199,47 @@ u32 isInt ;    // 是否在处理中断程序
 void dispChar(char c, u8 color);
 u8 inByte(u16 port);
 void outByte(u8 data, u16 port);
-void clockHandler();
+void hwint00();
+void hwint01();
+void hwint02();
+void hwint03();
+void hwint04();
+void hwint05();
+void hwint06();
+void hwint07();
+void hwint08();
+void hwint09();
+void hwint10();
+void hwint11();
+void hwint12();
+void hwint13();
+void hwint14();
+void hwint15();
+
 void Handler();
-void keyboardHandler();
 
 ///-----------------------------------
-
+void defaultHwintHandler();
+void keyboardHandler();
+void clockHandler();
 void init8259a();
 void buildIdt();
 void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
 void memCpy(u8* to, u8* from, u32 size);
 void memSet(u8* to, u8 val, u32 size);
-void initPCB(PCB* pcb, u32 entry, u32 ldtSel);
+void addPCB(u32 num, u32 entry);
+
+// todo
 void processA();
 void processB();
+void processC();
 
 void osinit(){
     dispPos = 0;
     isInt = 0;
-    /// 将GDT从loader移动到kernel
-    /// 执行前gdtPtr存放loader中GDT PTR信息
-    /// 执行后gdtPtr存放kernel中GDT PTR信息
+
+    //将GDT从loader移动到kernel,执行前gdtPtr存放loader中GDT PTR信息,执行后gdtPtr存放kernel中GDT PTR信息
     memCpy((u8*)&gdt,(u8*) (*((u32*)(gdtPtr+2))), *((u16*)gdtPtr)+1);  
     *((u16*)gdtPtr) = (u16)(sizeof(gdt)-1);         // GDT limit
     *((u32*)(gdtPtr+2))= (u32)&gdt;                 // GDT base
@@ -223,20 +247,29 @@ void osinit(){
     init8259a();
     buildIdt();    
 
+    // 初始化TSS 及 TSS描述符
     memSet((u8*)&tss, 0, sizeof(TSS));
     tss.ss0 = GDT_SELECTOR_D32;
     tss.iobase = sizeof(TSS);
     initDescriptor(&gdt[GDT_SELECTOR_TSS>>3],(u32) &tss, sizeof(TSS)-1, DA_386TSS, 0 );
 
-    initPCB(&pcbs[0], (u32)processA, GDT_SELECTOR_LDT);
-    initPCB(&pcbs[1], (u32)processB, GDT_SELECTOR_LDT + sizeof(Descriptor));
-    currentPcb = &pcbs[1];
+    // 添加进程
+    addPCB(0, (u32)processA);
+    addPCB(1, (u32)processB);
+    addPCB(2, (u32)processC);
+    currentPcb = &pcbs[0];
 
-    for (int i=0; i<4; i++)    dispChar('a', 0x0c); // this is for test 
-    dispPos += 4;
+    for (int i=0; i<4; i++)    dispChar('a', 0x0c); // todo:this is for test 
+    dispPos += 4;       // todo:this is for test 
 }
 
-void initPCB(PCB* pcb, u32 entry, u32 ldtSel) {    
+// 添加进程 
+// num, 进程号， 必须是从0开始的连续数，且小于PCB_SIZE
+// entry, 进程入口地址
+void addPCB(u32 num, u32 entry) {  
+    if (num >= PCB_SIZE) return;
+    u32 ldtSel = GDT_SELECTOR_LDT + num*sizeof(Descriptor);
+    PCB *pcb = &pcbs[num];
     initDescriptor(&pcb->ldt[LDT_SELECTOR_D32 >> 3], 0, 0xfffff, DA_DRW | DA_DPL1, DA_LIMIT_4K | DA_32);
     initDescriptor(&pcb->ldt[LDT_SELECTOR_C32 >> 3], 0, 0xfffff, DA_CR | DA_DPL1, DA_LIMIT_4K | DA_32);
     initDescriptor(&gdt[ldtSel>>3], (u32)(&pcb->ldt), sizeof(Descriptor)*LDT_SIZE - 1, DA_LDT | DA_DPL1, 0);
@@ -252,20 +285,20 @@ void initPCB(PCB* pcb, u32 entry, u32 ldtSel) {
 
 /// 初始化中断控制器8259A
 void init8259a(){
-    outByte(0x11, PORT_8259A_PRIMARY1);     // 写ICW1
-    outByte(0x11, PORT_8259A_ATTACH1); 
+    outByte(0x11, PORT_8259A_MASTER1);     // 写ICW1
+    outByte(0x11, PORT_8259A_SLAVE1); 
 
-    outByte(INT_VECTOR_IRQ0, PORT_8259A_PRIMARY2);     // 写ICW2 ,主片IRQ0-IRQ7对应中断号
-    outByte(INT_VECTOR_IRQ8, PORT_8259A_ATTACH2);      // 写ICW2 ,从片IRQ8-IRQ15对应中断号
+    outByte(INT_VECTOR_IRQ0, PORT_8259A_MASTER2);     // 写ICW2 ,主片IRQ0-IRQ7对应中断号
+    outByte(INT_VECTOR_IRQ8, PORT_8259A_SLAVE2);      // 写ICW2 ,从片IRQ8-IRQ15对应中断号
 
-    outByte(0x04, PORT_8259A_PRIMARY2);     // 写ICW3
-    outByte(0x02, PORT_8259A_ATTACH2);      // 写ICW3, 从片对应主片的IR号
+    outByte(0x04, PORT_8259A_MASTER2);     // 写ICW3
+    outByte(0x02, PORT_8259A_SLAVE2);      // 写ICW3, 从片对应主片的IR号
 
-    outByte(0x01, PORT_8259A_PRIMARY2);     // 写ICW4
-    outByte(0x01, PORT_8259A_ATTACH2);
+    outByte(0x01, PORT_8259A_MASTER2);     // 写ICW4
+    outByte(0x01, PORT_8259A_SLAVE2);
 
-    outByte(0x0fe, PORT_8259A_PRIMARY2);     // 写OCW1, 主片仅打开时钟中断
-    outByte(0x0ff, PORT_8259A_ATTACH2);      // 写OCW1, 从片屏蔽所有中断 
+    outByte(0x0fc, PORT_8259A_MASTER2);     // 写OCW1, 主片仅打开时钟中断
+    outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断 
 }
 
 /// 建立IDT
@@ -273,15 +306,38 @@ void buildIdt(){
     for (int i=0; i<IDT_SIZE; i++) {
         initGate(&idt[i], GDT_SELECTOR_C32, (u32)Handler, DA_386IGate, 0);
     }
-    initGate(&idt[INT_VECTOR_IRQ0], GDT_SELECTOR_C32, (u32)clockHandler, DA_386IGate, 0);
-    initGate(&idt[INT_VECTOR_IRQ0+1], GDT_SELECTOR_C32, (u32)keyboardHandler, DA_386IGate, 0);
+
+    initGate(&idt[INT_VECTOR_IRQ0+0], GDT_SELECTOR_C32, (u32)hwint00, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ0+1], GDT_SELECTOR_C32, (u32)hwint01, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ0+2], GDT_SELECTOR_C32, (u32)hwint02, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ0+3], GDT_SELECTOR_C32, (u32)hwint03, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ0+4], GDT_SELECTOR_C32, (u32)hwint04, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ0+5], GDT_SELECTOR_C32, (u32)hwint05, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ0+6], GDT_SELECTOR_C32, (u32)hwint06, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ0+7], GDT_SELECTOR_C32, (u32)hwint07, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+0], GDT_SELECTOR_C32, (u32)hwint08, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+1], GDT_SELECTOR_C32, (u32)hwint09, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+2], GDT_SELECTOR_C32, (u32)hwint10, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+3], GDT_SELECTOR_C32, (u32)hwint11, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+4], GDT_SELECTOR_C32, (u32)hwint12, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+5], GDT_SELECTOR_C32, (u32)hwint13, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+6], GDT_SELECTOR_C32, (u32)hwint14, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_IRQ8+7], GDT_SELECTOR_C32, (u32)hwint15, DA_386IGate, 0);
+
+    hwintHandlerTable[0] = (u32)clockHandler;
+    hwintHandlerTable[1] = (u32)keyboardHandler;
+    for (int i=2 ;i<IRQ_COUNT; i++) {
+        hwintHandlerTable[i] = (u32)defaultHwintHandler;
+    }
 
     *((u16*)idtPtr) = (u16)(sizeof(idt)-1);
     *((u32*)(idtPtr+2))= (u32)&idt;   
 }
 
+ // 硬件中断默认处理程序
+ void defaultHwintHandler(){}
 
-// 初始化描述符
+// 初始化 段 描述符
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr){
     p->base1 = 0xffff & base;
     p->base2 = 0xff & (base>>16);
@@ -291,7 +347,7 @@ void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr){
     p->attr2 = (0x0f &(limit>>16) ) | (0xf0 & attr); 
 }
 
-// 初始化 门描述符
+// 初始化 门 描述符
 void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) {
     p->selector = sel;
     p->offset1 = offset & 0xffff ;
@@ -300,37 +356,13 @@ void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) {
     p->pcount = pcount;
 }
 
-void memCpy(u8* to, u8* from, u32 size){
-    for(u32 i=0;i<size; i++) to[i] = from[i];
+// 键盘中断处理程序， todo
+void keyboardHandler(){
+    dispChar('!', 0x0c);
 }
 
-void memSet(u8* to, u8 val, u32 size){
-    for(int i=0;i<size; i++) to[i] = val;
-}
-
-void processA(){
-    char a = 'A';
-    while(1) {
-        // dispPos = 160*1;
-        dispChar(a, 0x0c);
-        a++;
-        if (a >  'Z') a = 'A';
-        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
-    }
-}
-
-void processB(){
-    char a = 'a';
-    while(1) {
-        // dispPos = 160*2;
-        dispChar(a, 0x0c);
-        a++;
-        if (a >  'z') a = 'a';
-        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
-    }
-}
-
-void showMsg(){
+// 时钟中断处理程序， todo
+void clockHandler(){
     if ( dispPos > 160*20) dispPos = 160;
     if(isInt != 0) {   // 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
         dispChar('=', 0x0c);
@@ -343,4 +375,48 @@ void showMsg(){
     dispChar('~', 0x0c);
     currentPcb++;
     if (currentPcb >= pcbs + PCB_SIZE)  currentPcb=pcbs;
+}
+
+void memCpy(u8* to, u8* from, u32 size){
+    for(u32 i=0;i<size; i++) to[i] = from[i];
+}
+
+void memSet(u8* to, u8 val, u32 size){
+    for(int i=0;i<size; i++) to[i] = val;
+}
+
+// 测试进程A
+void processA(){
+    char a = 'A';
+    while(1) {
+        // dispPos = 160*1;
+        dispChar(a, 0x0c);
+        a++;
+        if (a >  'Z') a = 'A';
+        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
+    }
+}
+
+// 测试进程B
+void processB(){
+    char a = 'a';
+    while(1) {
+        // dispPos = 160*2;
+        dispChar(a, 0x0c);
+        a++;
+        if (a >  'z') a = 'a';
+        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
+    }
+}
+
+// 测试进程C
+void processC(){
+    char a = '0';
+    while(1) {
+        // dispPos = 160*2;
+        dispChar(a, 0x0c);
+        a++;
+        if (a >  '9') a = '0';
+        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
+    }
 }
