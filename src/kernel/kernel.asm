@@ -34,6 +34,7 @@ extern idtPtr
 extern dispPos  
 extern currentPcb
 extern tss
+extern isInt
 
 extern showMsg;
 extern osinit
@@ -54,6 +55,8 @@ restart:    ; 进入低特权级，执行进程
     lldt    [esp + PCB_LDT_SEL]
     lea     eax, [esp + PCB_REGS_END ]   
     mov     [tss + TSS_ESP0], eax   ; TSS.ESP0 指向当前进程寄存器数据末尾处，为中断发生时保存数据做准备
+restart_int:
+    dec     dword [isInt]
     popad           ; pop语句顺序与klibc.c 中PCB结构定义保持一致
     pop     ds
     pop     es
@@ -99,38 +102,48 @@ inByte:
 outByte:
     push    eax
     push    edx
-
     mov     al, [esp+8+4]
     mov     edx, [esp+8+8]
     out     dx, al
     nop
-
     pop     edx
     pop     eax
     ret    
 
 ;；----- 8059A 硬件中断处理程序 ---------------------------
 clockHandler:      
-    cli
      ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
+    push    gs
     push    fs
     push    es
     push    ds
-    push    gs
-    pusha
-    ; 设置内核寄存器数据 
+    pushad
+
+
+
+    inc     byte [gs:0]
+
+    ; SEND EOI 
+    mov     al, EOI
+    out     PORT_8259A_PRIMARY1, al    
+    ; 判断是否为中断重入     
+    inc     dword [isInt]
+    cmp     dword [isInt], 0
+    jne     restart_int                   ; 发生中断重入
+    ; 没有中断重入，开中断，执行中断处理程序
+
+    ; 设置内核寄存器数据     
     mov     esp, StackTop  ; esp 指向内核栈
     mov     ax, ss  
     mov     ds, ax
     mov     es, ax
     mov     fs, ax 
-    ; 执行中断处理程序
+    sti    
+    inc     byte [gs:2]
     call    showMsg
-    inc     byte [gs:2] 
-    mov     al, EOI
-    out     PORT_8259A_PRIMARY1, al         ; SEND EOI
-    ; 进入currentPcb指向的进程    
+    cli   
     jmp     restart
+
 
 keyboardHandler:
     inc     byte [gs:0] 

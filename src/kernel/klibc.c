@@ -80,7 +80,7 @@
 // 进程控制块 大小
 #define PCB_SIZE 2
 // 进程堆栈 大小
-#define PROCESS_STACK_SIZE 9216
+#define PROCESS_STACK_SIZE 0x8000
 
 //////////////////////////////////////
 
@@ -185,6 +185,8 @@ u32 dispPos;        // 字符显示位置
 TSS tss;
 PCB pcbs[PCB_SIZE];
 PCB* currentPcb;
+
+u32 isInt ;    // 是否在处理中断程序
 ///-----------------------------------
 
 //////////////////////////////////////
@@ -210,7 +212,7 @@ void processB();
 
 void osinit(){
     dispPos = 0;
-
+    isInt = 0;
     /// 将GDT从loader移动到kernel
     /// 执行前gdtPtr存放loader中GDT PTR信息
     /// 执行后gdtPtr存放kernel中GDT PTR信息
@@ -309,32 +311,36 @@ void memSet(u8* to, u8 val, u32 size){
 void processA(){
     char a = 'A';
     while(1) {
+        // dispPos = 160*1;
         dispChar(a, 0x0c);
         a++;
-        dispPos -= 2;
-        // for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
+        if (a >  'Z') a = 'A';
+        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
 void processB(){
     char a = 'a';
     while(1) {
+        // dispPos = 160*2;
         dispChar(a, 0x0c);
         a++;
-        dispPos -= 2;
-        // for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
+        if (a >  'z') a = 'a';
+        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
 void showMsg(){
-    // char* name= "t";
-    // while(*name != 0) {
-    //     dispChar(*name, 0x0c);
-    //     name++;
-    // }
+    if ( dispPos > 160*20) dispPos = 160;
+    // 0x141cb   0x141ce
+    for(int i=0;i<0x141cd;i++) for(int j=0;j<0x1;j++);
 
-    // dispPos -= 2;
+    if(isInt != 0) {
+        dispChar('=', 0x0c);
+        return;
+    }
 
-    // currentPcb++;
-    // if (currentPcb > pcbs + PCB_SIZE)  currentPcb=pcbs;
+    dispChar('~', 0x0c);
+    currentPcb++;
+    if (currentPcb >= pcbs + PCB_SIZE)  currentPcb=pcbs;
 }

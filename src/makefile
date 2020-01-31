@@ -22,7 +22,7 @@ run/kernel.o:kernel/kernel.asm kernel/klibc.c
 	$(ASM) -f elf $< -o $@
 
 run/klibc.o:kernel/klibc.c kernel/kernel.asm
-	gcc -m32 -c $< -o $@ 
+	gcc -m32 -fno-stack-protector -c $< -o $@ 
 
 run:run/os.img
 	bochs -q -f run/bochsrc -rc run/debug.txt
