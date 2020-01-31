@@ -332,14 +332,14 @@ void processB(){
 
 void showMsg(){
     if ( dispPos > 160*20) dispPos = 160;
-    // 0x141cb   0x141ce
-    for(int i=0;i<0x141cd;i++) for(int j=0;j<0x1;j++);
-
-    if(isInt != 0) {
+    if(isInt != 0) {   // 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
         dispChar('=', 0x0c);
         return;
     }
 
+    // ; 没有中断重入，进程运行时发生的中断，可以进行进程切换
+    // 0x141cb   0x141ce
+    for(int i=0;i<0x141ce;i++) for(int j=0;j<0x1;j++);
     dispChar('~', 0x0c);
     currentPcb++;
     if (currentPcb >= pcbs + PCB_SIZE)  currentPcb=pcbs;

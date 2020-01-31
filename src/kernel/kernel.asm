@@ -118,32 +118,27 @@ clockHandler:
     push    es
     push    ds
     pushad
-
-
-
-    inc     byte [gs:0]
-
     ; SEND EOI 
     mov     al, EOI
-    out     PORT_8259A_PRIMARY1, al    
+    out     PORT_8259A_PRIMARY1, al 
     ; 判断是否为中断重入     
     inc     dword [isInt]
     cmp     dword [isInt], 0
-    jne     restart_int                   ; 发生中断重入
-    ; 没有中断重入，开中断，执行中断处理程序
-
+    jne     .1                   ; 发生中断重入
     ; 设置内核寄存器数据     
     mov     esp, StackTop  ; esp 指向内核栈
     mov     ax, ss  
     mov     ds, ax
     mov     es, ax
     mov     fs, ax 
+    ; 没有中断重入，进程运行时发生的中断，可以进行进程切换
     sti    
-    inc     byte [gs:2]
     call    showMsg
     cli   
     jmp     restart
-
+.1:                         ; 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
+    call    showMsg
+    jmp     restart_int
 
 keyboardHandler:
     inc     byte [gs:0] 
