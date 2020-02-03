@@ -6,7 +6,7 @@
 #define PORT_8259A_MASTER2 0x21
 #define PORT_8259A_SLAVE1 0xA0
 #define PORT_8259A_SLAVE2 0xA1
-#define PORT_8259A_KEYBOARD_DATA 0x60
+#define PORT_KEYBOARD_DATA 0x60
 
 // 外部中断对应中断号
 #define INT_VECTOR_IRQ0    0x20            
@@ -115,7 +115,6 @@ typedef struct _Gate {
 	u16 offset2; 	// 偏移2  
 } Gate;
 
-
 typedef struct _TSS {
 	u32	backlink;
 	u32	esp0;		/* stack pointer to use during interrupt */
@@ -169,11 +168,13 @@ typedef struct _PCB {
     u32 p_esp;    
     u32 ss;
 
-    u16  ldtSel; // 17
-    Descriptor ldt[2];
-    u32 entry;    
-    char name[16];
-    u8 pstack[PROCESS_STACK_SIZE];       
+    u16  ldtSel;                        //第17个，此处至开头数据的位置需要保持不变
+    Descriptor ldt[2];  
+    u32 entry;                          // 进程入口
+    u32 priority;                       // 优先级
+    u32 ticks;  
+    char name[16];                      // 进程名称
+    u8 pstack[PROCESS_STACK_SIZE];      // 进程堆栈
 } PCB ;
 
 
@@ -185,14 +186,15 @@ Gate idt[IDT_SIZE];
 u8 idtPtr[6];
 
 u32 dispPos;        // 字符显示位置
+u8 dispColor;       // 字符显示颜色
 
 TSS tss;
-PCB pcbs[PCB_SIZE];
-PCB* currentPcb;
+PCB pcbs[PCB_SIZE];     // 所有进程
+PCB* currentPcb;        // 当前运行的进程
 
-u32 isInt ;    // 是否在处理中断程序
-
-u32 hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序表
+u32 isInt ;     // 是否在处理中断程序
+u32 ticks;      // 时钟中断发生次数
+u32 hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序
 ///-----------------------------------
 
 //////////////////////////////////////
@@ -220,16 +222,20 @@ void hwint15();
 void Handler();
 
 ///-----------------------------------
-void defaultHwintHandler();
-void keyboardHandler();
-void clockHandler();
-void init8259a();
+void addPCB(u32 num, u32 entry, u32 priority);
 void buildIdt();
+void clockHandler();
+void defaultHwintHandler();
+void dispInt(u32);
+void dispStr(char*);
+void init8259a();
+void itos(u32 a, char* p);
 void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
+void keyboardHandler();
 void memCpy(u8* to, u8* from, u32 size);
 void memSet(u8* to, u8 val, u32 size);
-void addPCB(u32 num, u32 entry);
+void schedule();
 
 // todo
 void processA();
@@ -238,7 +244,9 @@ void processC();
 
 void osinit(){
     dispPos = 0;
+    dispColor = 0x0c;
     isInt = 0;
+    ticks = 0;
 
     //将GDT从loader移动到kernel,执行前gdtPtr存放loader中GDT PTR信息,执行后gdtPtr存放kernel中GDT PTR信息
     memCpy((u8*)&gdt,(u8*) (*((u32*)(gdtPtr+2))), *((u16*)gdtPtr)+1);  
@@ -255,19 +263,19 @@ void osinit(){
     initDescriptor(&gdt[GDT_SELECTOR_TSS>>3],(u32) &tss, sizeof(TSS)-1, DA_386TSS, 0 );
 
     // 添加进程
-    addPCB(0, (u32)processA);
-    addPCB(1, (u32)processB);
-    addPCB(2, (u32)processC);
+    addPCB(0, (u32)processA, 1);
+    addPCB(1, (u32)processB, 5);
+    addPCB(2, (u32)processC, 0);
     currentPcb = &pcbs[0];
 
-    for (int i=0; i<4; i++)    dispChar('a', 0x0c); // todo:this is for test 
-    dispPos = 160;       // todo:this is for test 
+    dispStr("\n\n  Welcome to Fly OS! \n\n");
 }
 
 // 添加进程 
 // num, 进程号， 必须是从0开始的连续数，且小于PCB_SIZE
 // entry, 进程入口地址
-void addPCB(u32 num, u32 entry) {  
+// priority, 进程优先级，越大优先级越高
+void addPCB(u32 num, u32 entry, u32 priority) {  
     if (num >= PCB_SIZE) return;
     u32 ldtSel = GDT_SELECTOR_LDT + num*sizeof(Descriptor);
     PCB *pcb = &pcbs[num];
@@ -275,6 +283,7 @@ void addPCB(u32 num, u32 entry) {
     initDescriptor(&pcb->ldt[LDT_SELECTOR_C32 >> 3], 0, 0xfffff, DA_CR | DA_DPL1, DA_LIMIT_4K | DA_32);
     initDescriptor(&gdt[ldtSel>>3], (u32)(&pcb->ldt), sizeof(Descriptor)*LDT_SIZE - 1, DA_LDT | DA_DPL1, 0);
 
+    pcb->priority = pcb->ticks = priority;
     pcb->ldtSel = ldtSel;
     pcb->cs = LDT_SELECTOR_C32;
     pcb->ss = pcb->ds = pcb->es = pcb->fs = LDT_SELECTOR_D32;
@@ -358,25 +367,49 @@ void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) {
 }
 
 // 键盘中断处理程序， todo
-void keyboardHandler(){
-    dispChar('!', 0x0c);
-    inByte(PORT_8259A_KEYBOARD_DATA);
+void keyboardHandler(){  
+    dispChar('!', dispColor);
+    u8 k =inByte(PORT_KEYBOARD_DATA);
+    dispInt(k);
 }
 
-// 时钟中断处理程序， todo
+// 时钟中断处理程序 
 void clockHandler(){
-    if ( dispPos > 160*20) dispPos = 160;
+    ticks++;
+    (currentPcb->ticks)--;
     if(isInt != 0) {   // 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
-        dispChar('=', 0x0c);
         return;
     }
 
-    // ; 没有中断重入，进程运行时发生的中断，可以进行进程切换
-    // 0x141cb   0x141ce
-    for(int i=0;i<0x141ce;i++) for(int j=0;j<0x1;j++);
-    dispChar('~', 0x0c);
-    currentPcb++;
-    if (currentPcb >= pcbs + PCB_SIZE)  currentPcb=pcbs;
+    // 没有中断重入，进程运行时发生的中断，可以进行进程切换
+    schedule();
+}
+
+// 进程调度算法
+void schedule(){
+    // ---------- 循环调用 ---------------
+    // currentPcb++;
+    // if (currentPcb >= pcbs + PCB_SIZE)  currentPcb=pcbs;
+
+    // ---------- 优先级调度 ---------------
+    if(currentPcb->ticks > 0) {
+        return;
+    }
+    int maxTicks = 0;
+    for (int i=0;i<PCB_SIZE; i++) {
+        if (pcbs[i].ticks > maxTicks) {
+            maxTicks = pcbs[i].ticks;
+            currentPcb = & pcbs[i];
+        }
+    }
+    if (maxTicks == 0){
+        for (int i=0;i<PCB_SIZE; i++) {
+            pcbs[i].ticks = pcbs[i].priority;
+            if (pcbs[i].priority > currentPcb->priority) {
+                currentPcb = & pcbs[i];
+            }
+        }
+    }
 }
 
 void memCpy(u8* to, u8* from, u32 size){
@@ -387,15 +420,45 @@ void memSet(u8* to, u8 val, u32 size){
     for(int i=0;i<size; i++) to[i] = val;
 }
 
-// 测试进程A
+// 整数转换为16进制字符串
+void itos(u32 a, char* p){
+    for (int i=0;i<8; i++) {
+        char w = (a>>(28-i*4)) & 0x0f;
+        if (w>=10) {
+            *(p+i) = w +'A' - 10;
+        }else {
+            *(p+i) = w +'0';
+        }
+    }
+}
+
+// 显示字符串
+void dispStr(char* p){
+    while(*p != 0) {
+        if (*p == '\n'){
+            dispPos += 160 - dispPos % 160;
+        }
+        else {
+            dispChar(*p, dispColor);
+        }
+        p++;
+    }
+}
+
+// 显示整数
+void dispInt(u32 a){
+    char b[9]="";
+    itos(a, b);
+    dispStr(b);
+} 
+
+// 测试进程AQ1
 void processA(){
-    char a = 'A';
     while(1) {
-        // dispPos = 160*1;
-        dispChar(a, 0x0c);
-        a++;
-        if (a >  'Z') a = 'A';
-        for(int i=0;i<0x7fffff;i++) for(int j=0;j<0x1;j++);
+        if (dispPos > 160*24) dispPos = 160;
+        // dispInt(ticks);
+        // dispChar('-', dispColor);
+        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
@@ -403,9 +466,7 @@ void processA(){
 void processB(){
     char a = 'a';
     while(1) {
-        // dispPos = 160*2;
-        dispChar(a, 0x0c);
-        a++;
+        dispChar(a++, 0x0f);
         if (a >  'z') a = 'a';
         for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }
@@ -415,9 +476,7 @@ void processB(){
 void processC(){
     char a = '0';
     while(1) {
-        // dispPos = 160*2;
-        dispChar(a, 0x0c);
-        a++;
+        dispChar(a++, 0x01);
         if (a >  '9') a = '0';
         for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }

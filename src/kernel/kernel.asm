@@ -103,12 +103,12 @@ dispChar:
 ; 读端口
 ; u8 inByte(u16 port)
 inByte:
-    push    eax
     push    edx
-    mov     edx, [esp+8+4]
+    mov     edx, [esp+8]
     in      al, dx
+    nop
+    nop
     pop     edx
-    pop     eax
     ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
