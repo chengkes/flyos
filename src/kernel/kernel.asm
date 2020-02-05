@@ -1,6 +1,6 @@
 BITS 32
 [section .bss]  
-    times 2048 db 0
+    resb	2048
 StackTop :
 
 EOI                  equ   20h

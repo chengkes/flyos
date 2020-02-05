@@ -1,0 +1,11 @@
+# for windows
+megs: 32
+romimage: file="D:\Program Files (x86)\Bochs-2.6.10\BIOS-bochs-latest"
+vgaromimage: file="D:\Program Files (x86)\Bochs-2.6.10\VGABIOS-lgpl-latest"
+vga: extension=vbe, update_freq=15
+floppya: 1_44=run/os.img, status=inserted
+boot: floppy
+log: run/bochsout.txt
+#mouse: enabled=0
+#cpu: ips=15000000
+keyboard: keymap="D:\Program Files (x86)\Bochs-2.6.10\keymaps/x11-pc-us.map"
