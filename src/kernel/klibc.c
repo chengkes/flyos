@@ -6,11 +6,21 @@
 #define PORT_8259A_MASTER2 0x21
 #define PORT_8259A_SLAVE1 0xA0
 #define PORT_8259A_SLAVE2 0xA1
-#define PORT_KEYBOARD_DATA 0x60
-
 // 外部中断对应中断号
 #define INT_VECTOR_IRQ0    0x20            
 #define INT_VECTOR_IRQ8    0x28
+// 时钟8253芯片端口
+#define PORT_CLOCK_COUNTER0  0x40
+#define PORT_CLOCK_COUNTER1  0x41
+#define PORT_CLOCK_COUNTER2  0x42
+#define PORT_CLOCK_CONTROL   0x43
+
+#define CLOCK_DEFAULT_HZ    1193180
+#define cLOCK_COUNTER0_HZ   100   // 每10ms发生一次时钟中断, 该值必须大于18
+#define CLOCK_MODE          0x34
+
+// 键盘端口
+#define PORT_KEYBOARD_DATA 0x60
 
 /*----------------------------------------------------------------------------
 ; 描述符类型值说明
@@ -494,6 +504,11 @@ void osinit(){
     init8259a();
     buildIdt();    
 
+    // 初始化时钟中断频率
+    outByte(CLOCK_MODE, PORT_CLOCK_CONTROL);
+    outByte((CLOCK_DEFAULT_HZ/cLOCK_COUNTER0_HZ) & 0xff, PORT_CLOCK_COUNTER0);             // 先写低位
+    outByte(((CLOCK_DEFAULT_HZ/cLOCK_COUNTER0_HZ)>>8) & 0xff, PORT_CLOCK_COUNTER0);        // 再写高位
+
     // 初始化TSS 及 TSS描述符
     memSet((u8*)&tss, 0, sizeof(TSS));
     tss.ss0 = GDT_SELECTOR_D32;
@@ -545,7 +560,7 @@ void init8259a(){
     outByte(0x01, PORT_8259A_MASTER2);     // 写ICW4
     outByte(0x01, PORT_8259A_SLAVE2);
 
-    outByte(0x0fd, PORT_8259A_MASTER2);     // 写OCW1, 主片仅打开时钟中断
+    outByte(0x0fc, PORT_8259A_MASTER2);     // 写OCW1, 主片打开时钟中断、键盘终端
     outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断 
 }
 
@@ -634,6 +649,7 @@ void keyboardHandler(){
 // 时钟中断处理程序 
 void clockHandler(){
     ticks++;
+    dispChar('~', 0x0c);
     (currentPcb->ticks)--;
     if(isInt != 0) {   // 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
         return;
