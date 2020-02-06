@@ -16,7 +16,7 @@
 #define PORT_CLOCK_CONTROL   0x43
 
 #define CLOCK_DEFAULT_HZ    1193180
-#define cLOCK_COUNTER0_HZ   100   // 每10ms发生一次时钟中断, 该值必须大于18
+#define CLOCK_COUNTER0_HZ   1000   // 每1ms发生一次时钟中断, 该值必须大于18
 #define CLOCK_MODE          0x34
 
 // 键盘端口
@@ -182,11 +182,10 @@ typedef struct _PCB {
     Descriptor ldt[2];  
     u32 entry;                          // 进程入口
     u32 priority;                       // 优先级
-    u32 ticks;  
+    int ticks;  
     char name[16];                      // 进程名称
     u8 pstack[PROCESS_STACK_SIZE];      // 进程堆栈
 } PCB ;
-
 
 //////////////////////////////////////
 Descriptor gdt[GDT_SIZE];
@@ -483,6 +482,7 @@ void keyboardHandler();
 void memCpy(u8* to, u8* from, u32 size);
 void memSet(u8* to, u8 val, u32 size);
 void schedule();
+void delayMs(u32);
 
 // todo
 void processA();
@@ -506,8 +506,8 @@ void osinit(){
 
     // 初始化时钟中断频率
     outByte(CLOCK_MODE, PORT_CLOCK_CONTROL);
-    outByte((CLOCK_DEFAULT_HZ/cLOCK_COUNTER0_HZ) & 0xff, PORT_CLOCK_COUNTER0);             // 先写低位
-    outByte(((CLOCK_DEFAULT_HZ/cLOCK_COUNTER0_HZ)>>8) & 0xff, PORT_CLOCK_COUNTER0);        // 再写高位
+    outByte((CLOCK_DEFAULT_HZ/CLOCK_COUNTER0_HZ) & 0xff, PORT_CLOCK_COUNTER0);             // 先写低位
+    outByte(((CLOCK_DEFAULT_HZ/CLOCK_COUNTER0_HZ)>>8) & 0xff, PORT_CLOCK_COUNTER0);        // 再写高位
 
     // 初始化TSS 及 TSS描述符
     memSet((u8*)&tss, 0, sizeof(TSS));
@@ -516,9 +516,9 @@ void osinit(){
     initDescriptor(&gdt[GDT_SELECTOR_TSS>>3],(u32) &tss, sizeof(TSS)-1, DA_386TSS, 0 );
 
     // 添加进程
-    addPCB(0, (u32)processA, 1);
-    addPCB(1, (u32)processB, 5);
-    addPCB(2, (u32)processC, 0);
+    addPCB(0, (u32)processA, 100);
+    addPCB(1, (u32)processB, 500);
+    addPCB(2, (u32)processC, 200);
     currentPcb = &pcbs[0];
 
     dispStr("\n\n  Welcome to Fly OS! \n\n");
@@ -649,7 +649,6 @@ void keyboardHandler(){
 // 时钟中断处理程序 
 void clockHandler(){
     ticks++;
-    dispChar('~', 0x0c);
     (currentPcb->ticks)--;
     if(isInt != 0) {   // 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
         return;
@@ -657,7 +656,16 @@ void clockHandler(){
 
     // 没有中断重入，进程运行时发生的中断，可以进行进程切换
     schedule();
+    dispChar('~', 0x0c);
+    delayMs(3000);
 }
+
+// 
+void delayMs(u32 t) {
+    u32 t1 = ticks;
+    while ((ticks - t1 )*1000/CLOCK_COUNTER0_HZ <= t);
+}
+
 
 // 进程调度算法
 void schedule(){
@@ -719,7 +727,7 @@ void dispStr(char* p){
     }
 }
 
-// 显示整数
+// 显示整数 
 void dispInt(u32 a){
     char b[9]="";
     itos(a, b);
@@ -731,8 +739,6 @@ void processA(){
     while(1) {
         if (dispPos > 160*24) dispPos = 160;
         // dispInt(ticks);
-        // dispChar('-', dispColor);
-        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
@@ -742,7 +748,6 @@ void processB(){
     while(1) {
         dispChar(a++, 0x0f);
         if (a >  'z') a = 'a';
-        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }
 }
 
@@ -752,6 +757,5 @@ void processC(){
     while(1) {
         dispChar(a++, 0x01);
         if (a >  '9') a = '0';
-        for(int i=0;i<0x7fff;i++) for(int j=0;j<0x1;j++);
     }
 }
