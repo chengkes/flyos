@@ -752,7 +752,7 @@ u8 getByteFromKeybuf(){
     while (keyBuf.count <=0);
 
     u8 scanCode = *(keyBuf.tail ++);
-    dispColor = 0X02; dispInt(scanCode); // todo
+    // dispColor = 0X02; dispInt(scanCode); // todo
     keyBuf.count --;
     if (keyBuf.tail >= keyBuf.buf + KEY_BUF_SIZE) {
         keyBuf.tail = keyBuf.buf;
@@ -842,7 +842,9 @@ u32 keyboardRead(u32 mask){
     } 
 
     if (key == 0 ) { 
-        // if ()
+        if (isKeyup && mask == flags) {          
+            return KEYBOARD_FLAG_EXT | (mask & 0xffffff00) | isKeyup; // 单独按下 shift\alt\ctrl 
+        }
 
         if (isKeyup) {   // 取消 shift\alt\ctrl 标记
             mask &= (~flags);
