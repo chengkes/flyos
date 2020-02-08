@@ -20,7 +20,8 @@
 #define CLOCK_MODE          0x34
 
 // 键盘端口
-#define PORT_KEYBOARD_DATA 0x60
+#define PORT_KEYBOARD_DATA  0x60
+#define PORT_KEYBOARD_STATE 0x64
 
 /*----------------------------------------------------------------------------
 ; 描述符类型值说明
@@ -187,6 +188,15 @@ typedef struct _PCB {
     u8 pstack[PROCESS_STACK_SIZE];      // 进程堆栈
 } PCB ;
 
+#define KEY_BUF_SIZE 128
+
+typedef struct _KeyBuf {
+    int count;
+    u8 buf[KEY_BUF_SIZE];
+    u8* head;
+    u8* tail;
+} KeyBuf;
+
 //////////////////////////////////////
 Descriptor gdt[GDT_SIZE];
 u8 gdtPtr[6];
@@ -205,94 +215,95 @@ u32 isInt ;     // 是否在处理中断程序
 u32 ticks;      // 时钟中断发生次数
 u32 hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序
 
+KeyBuf keyBuf;
 
 /* Keymap for US MF-2 keyboard. */
 #define MAP_COLS	3	/* Number of columns in keymap */
 #define NR_SCAN_CODES	0x80	/* Number of scan codes (rows in keymap) */
 
-#define FLAG_BREAK	0x0080		/* Break Code			*/
-#define FLAG_EXT	0x0100		/* Normal function keys		*/
-#define FLAG_SHIFT_L	0x0200		/* Shift key			*/
-#define FLAG_SHIFT_R	0x0400		/* Shift key			*/
-#define FLAG_CTRL_L	0x0800		/* Control key			*/
-#define FLAG_CTRL_R	0x1000		/* Control key			*/
-#define FLAG_ALT_L	0x2000		/* Alternate key		*/
-#define FLAG_ALT_R	0x4000		/* Alternate key		*/
-#define FLAG_PAD	0x8000		/* keys in num pad		*/
+#define KEYBOARD_FLAG_BREAK	    NR_SCAN_CODES		/* Break Code			*/
+#define KEYBOARD_FLAG_EXT	    0x0100		/* Normal function keys		*/
+#define KEYBOARD_FLAG_SHIFT_L	0x0200		/* Shift key			*/
+#define KEYBOARD_FLAG_SHIFT_R	0x0400		/* Shift key			*/
+#define KEYBOARD_FLAG_CTRL_L	0x0800		/* Control key			*/
+#define KEYBOARD_FLAG_CTRL_R	0x1000		/* Control key			*/
+#define KEYBOARD_FLAG_ALT_L	    0x2000		/* Alternate key		*/
+#define KEYBOARD_FLAG_ALT_R	    0x4000		/* Alternate key		*/
+#define FLAG_PAD	            0x8000		/* keys in num pad		*/
 
 /* Special keys */
-#define ESC		(0x01 + FLAG_EXT)	/* Esc		*/
-#define TAB		(0x02 + FLAG_EXT)	/* Tab		*/
-#define ENTER		(0x03 + FLAG_EXT)	/* Enter	*/
-#define BACKSPACE	(0x04 + FLAG_EXT)	/* BackSpace	*/
+#define ESC		    (0x01 + KEYBOARD_FLAG_EXT)	/* Esc		*/
+#define TAB		    (0x02 + KEYBOARD_FLAG_EXT)	/* Tab		*/
+#define ENTER		(0x03 + KEYBOARD_FLAG_EXT)	/* Enter	*/
+#define BACKSPACE	(0x04 + KEYBOARD_FLAG_EXT)	/* BackSpace	*/
 
-#define GUI_L		(0x05 + FLAG_EXT)	/* L GUI	*/
-#define GUI_R		(0x06 + FLAG_EXT)	/* R GUI	*/
-#define APPS		(0x07 + FLAG_EXT)	/* APPS	*/
+#define GUI_L		(0x05 + KEYBOARD_FLAG_EXT)	/* L GUI	*/
+#define GUI_R		(0x06 + KEYBOARD_FLAG_EXT)	/* R GUI	*/
+#define APPS		(0x07 + KEYBOARD_FLAG_EXT)	/* APPS	*/
 
 /* Shift, Ctrl, Alt */
-#define SHIFT_L		(0x08 + FLAG_EXT)	/* L Shift	*/
-#define SHIFT_R		(0x09 + FLAG_EXT)	/* R Shift	*/
-#define CTRL_L		(0x0A + FLAG_EXT)	/* L Ctrl	*/
-#define CTRL_R		(0x0B + FLAG_EXT)	/* R Ctrl	*/
-#define ALT_L		(0x0C + FLAG_EXT)	/* L Alt	*/
-#define ALT_R		(0x0D + FLAG_EXT)	/* R Alt	*/
+#define SHIFT_L		(0x08 + KEYBOARD_FLAG_EXT)	/* L Shift	*/
+#define SHIFT_R		(0x09 + KEYBOARD_FLAG_EXT)	/* R Shift	*/
+#define CTRL_L		(0x0A + KEYBOARD_FLAG_EXT)	/* L Ctrl	*/
+#define CTRL_R		(0x0B + KEYBOARD_FLAG_EXT)	/* R Ctrl	*/
+#define ALT_L		(0x0C + KEYBOARD_FLAG_EXT)	/* L Alt	*/
+#define ALT_R		(0x0D + KEYBOARD_FLAG_EXT)	/* R Alt	*/
 
 /* Lock keys */
-#define CAPS_LOCK	(0x0E + FLAG_EXT)	/* Caps Lock	*/
-#define	NUM_LOCK	(0x0F + FLAG_EXT)	/* Number Lock	*/
-#define SCROLL_LOCK	(0x10 + FLAG_EXT)	/* Scroll Lock	*/
+#define CAPS_LOCK	(0x0E + KEYBOARD_FLAG_EXT)	/* Caps Lock	*/
+#define	NUM_LOCK	(0x0F + KEYBOARD_FLAG_EXT)	/* Number Lock	*/
+#define SCROLL_LOCK	(0x10 + KEYBOARD_FLAG_EXT)	/* Scroll Lock	*/
 
 /* Function keys */
-#define F1		(0x11 + FLAG_EXT)	/* F1		*/
-#define F2		(0x12 + FLAG_EXT)	/* F2		*/
-#define F3		(0x13 + FLAG_EXT)	/* F3		*/
-#define F4		(0x14 + FLAG_EXT)	/* F4		*/
-#define F5		(0x15 + FLAG_EXT)	/* F5		*/
-#define F6		(0x16 + FLAG_EXT)	/* F6		*/
-#define F7		(0x17 + FLAG_EXT)	/* F7		*/
-#define F8		(0x18 + FLAG_EXT)	/* F8		*/
-#define F9		(0x19 + FLAG_EXT)	/* F9		*/
-#define F10		(0x1A + FLAG_EXT)	/* F10		*/
-#define F11		(0x1B + FLAG_EXT)	/* F11		*/
-#define F12		(0x1C + FLAG_EXT)	/* F12		*/
+#define F1		(0x11 + KEYBOARD_FLAG_EXT)	/* F1		*/
+#define F2		(0x12 + KEYBOARD_FLAG_EXT)	/* F2		*/
+#define F3		(0x13 + KEYBOARD_FLAG_EXT)	/* F3		*/
+#define F4		(0x14 + KEYBOARD_FLAG_EXT)	/* F4		*/
+#define F5		(0x15 + KEYBOARD_FLAG_EXT)	/* F5		*/
+#define F6		(0x16 + KEYBOARD_FLAG_EXT)	/* F6		*/
+#define F7		(0x17 + KEYBOARD_FLAG_EXT)	/* F7		*/
+#define F8		(0x18 + KEYBOARD_FLAG_EXT)	/* F8		*/
+#define F9		(0x19 + KEYBOARD_FLAG_EXT)	/* F9		*/
+#define F10		(0x1A + KEYBOARD_FLAG_EXT)	/* F10		*/
+#define F11		(0x1B + KEYBOARD_FLAG_EXT)	/* F11		*/
+#define F12		(0x1C + KEYBOARD_FLAG_EXT)	/* F12		*/
 
 /* Control Pad */
-#define PRINTSCREEN	(0x1D + FLAG_EXT)	/* Print Screen	*/
-#define PAUSEBREAK	(0x1E + FLAG_EXT)	/* Pause/Break	*/
-#define INSERT		(0x1F + FLAG_EXT)	/* Insert	*/
-#define DELETE		(0x20 + FLAG_EXT)	/* Delete	*/
-#define HOME		(0x21 + FLAG_EXT)	/* Home		*/
-#define END		(0x22 + FLAG_EXT)	/* End		*/
-#define PAGEUP		(0x23 + FLAG_EXT)	/* Page Up	*/
-#define PAGEDOWN	(0x24 + FLAG_EXT)	/* Page Down	*/
-#define UP		(0x25 + FLAG_EXT)	/* Up		*/
-#define DOWN		(0x26 + FLAG_EXT)	/* Down		*/
-#define LEFT		(0x27 + FLAG_EXT)	/* Left		*/
-#define RIGHT		(0x28 + FLAG_EXT)	/* Right	*/
+#define PRINTSCREEN	(0x1D + KEYBOARD_FLAG_EXT)	/* Print Screen	*/
+#define PAUSEBREAK	(0x1E + KEYBOARD_FLAG_EXT)	/* Pause/Break	*/
+#define INSERT		(0x1F + KEYBOARD_FLAG_EXT)	/* Insert	*/
+#define DELETE		(0x20 + KEYBOARD_FLAG_EXT)	/* Delete	*/
+#define HOME		(0x21 + KEYBOARD_FLAG_EXT)	/* Home		*/
+#define END		    (0x22 + KEYBOARD_FLAG_EXT)	/* End		*/
+#define PAGEUP		(0x23 + KEYBOARD_FLAG_EXT)	/* Page Up	*/
+#define PAGEDOWN	(0x24 + KEYBOARD_FLAG_EXT)	/* Page Down	*/
+#define UP		    (0x25 + KEYBOARD_FLAG_EXT)	/* Up		*/
+#define DOWN		(0x26 + KEYBOARD_FLAG_EXT)	/* Down		*/
+#define LEFT		(0x27 + KEYBOARD_FLAG_EXT)	/* Left		*/
+#define RIGHT		(0x28 + KEYBOARD_FLAG_EXT)	/* Right	*/
 
 /* ACPI keys */
-#define POWER		(0x29 + FLAG_EXT)	/* Power	*/
-#define SLEEP		(0x2A + FLAG_EXT)	/* Sleep	*/
-#define WAKE		(0x2B + FLAG_EXT)	/* Wake Up	*/
+#define POWER		(0x29 + KEYBOARD_FLAG_EXT)	/* Power	*/
+#define SLEEP		(0x2A + KEYBOARD_FLAG_EXT)	/* Sleep	*/
+#define WAKE		(0x2B + KEYBOARD_FLAG_EXT)	/* Wake Up	*/
 
 /* Num Pad */
-#define PAD_SLASH	(0x2C + FLAG_EXT)	/* /		*/
-#define PAD_STAR	(0x2D + FLAG_EXT)	/* *		*/
-#define PAD_MINUS	(0x2E + FLAG_EXT)	/* -		*/
-#define PAD_PLUS	(0x2F + FLAG_EXT)	/* +		*/
-#define PAD_ENTER	(0x30 + FLAG_EXT)	/* Enter	*/
-#define PAD_DOT		(0x31 + FLAG_EXT)	/* .		*/
-#define PAD_0		(0x32 + FLAG_EXT)	/* 0		*/
-#define PAD_1		(0x33 + FLAG_EXT)	/* 1		*/
-#define PAD_2		(0x34 + FLAG_EXT)	/* 2		*/
-#define PAD_3		(0x35 + FLAG_EXT)	/* 3		*/
-#define PAD_4		(0x36 + FLAG_EXT)	/* 4		*/
-#define PAD_5		(0x37 + FLAG_EXT)	/* 5		*/
-#define PAD_6		(0x38 + FLAG_EXT)	/* 6		*/
-#define PAD_7		(0x39 + FLAG_EXT)	/* 7		*/
-#define PAD_8		(0x3A + FLAG_EXT)	/* 8		*/
-#define PAD_9		(0x3B + FLAG_EXT)	/* 9		*/
+#define PAD_SLASH	(0x2C + KEYBOARD_FLAG_EXT)	/* /		*/
+#define PAD_STAR	(0x2D + KEYBOARD_FLAG_EXT)	/* *		*/
+#define PAD_MINUS	(0x2E + KEYBOARD_FLAG_EXT)	/* -		*/
+#define PAD_PLUS	(0x2F + KEYBOARD_FLAG_EXT)	/* +		*/
+#define PAD_ENTER	(0x30 + KEYBOARD_FLAG_EXT)	/* Enter	*/
+#define PAD_DOT		(0x31 + KEYBOARD_FLAG_EXT)	/* .		*/
+#define PAD_0		(0x32 + KEYBOARD_FLAG_EXT)	/* 0		*/
+#define PAD_1		(0x33 + KEYBOARD_FLAG_EXT)	/* 1		*/
+#define PAD_2		(0x34 + KEYBOARD_FLAG_EXT)	/* 2		*/
+#define PAD_3		(0x35 + KEYBOARD_FLAG_EXT)	/* 3		*/
+#define PAD_4		(0x36 + KEYBOARD_FLAG_EXT)	/* 4		*/
+#define PAD_5		(0x37 + KEYBOARD_FLAG_EXT)	/* 5		*/
+#define PAD_6		(0x38 + KEYBOARD_FLAG_EXT)	/* 6		*/
+#define PAD_7		(0x39 + KEYBOARD_FLAG_EXT)	/* 7		*/
+#define PAD_8		(0x3A + KEYBOARD_FLAG_EXT)	/* 8		*/
+#define PAD_9		(0x3B + KEYBOARD_FLAG_EXT)	/* 9		*/
 #define PAD_UP		PAD_8			/* Up		*/
 #define PAD_DOWN	PAD_2			/* Down		*/
 #define PAD_LEFT	PAD_4			/* Left		*/
@@ -439,8 +450,6 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
 /* 0x7F - ???		*/	0,		0,		0
 };
 
-u32 preScanCode;
-
 ///-----------------------------------
 
 //////////////////////////////////////
@@ -483,9 +492,10 @@ void memCpy(u8* to, u8* from, u32 size);
 void memSet(u8* to, u8 val, u32 size);
 void schedule();
 void delayMs(u32);
+void taskTty();
+u32 keyboardRead(u32 mask);
 
 // todo
-void processA();
 void processB();
 void processC();
 
@@ -494,7 +504,9 @@ void osinit(){
     dispColor = 0x0c;
     isInt = 0;
     ticks = 0;
-    preScanCode = 0;
+
+    keyBuf.count = 0;
+    keyBuf.tail = keyBuf.head = keyBuf.buf;
 
     //将GDT从loader移动到kernel,执行前gdtPtr存放loader中GDT PTR信息,执行后gdtPtr存放kernel中GDT PTR信息
     memCpy((u8*)&gdt,(u8*) (*((u32*)(gdtPtr+2))), *((u16*)gdtPtr)+1);  
@@ -516,7 +528,7 @@ void osinit(){
     initDescriptor(&gdt[GDT_SELECTOR_TSS>>3],(u32) &tss, sizeof(TSS)-1, DA_386TSS, 0 );
 
     // 添加进程
-    addPCB(0, (u32)processA, 100);
+    addPCB(0, (u32)taskTty, 100);
     addPCB(1, (u32)processB, 500);
     addPCB(2, (u32)processC, 200);
     currentPcb = &pcbs[0];
@@ -622,28 +634,14 @@ void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) {
 // 键盘中断处理程序， todo
 void keyboardHandler(){  
     u8 scan_code =inByte(PORT_KEYBOARD_DATA);
-    dispColor = 0x01;
-    dispInt(scan_code);
 
-    
-    if (scan_code == 0xE0) {
-        preScanCode = scan_code;
-        return;
-    } 
-
-    if (scan_code >= 0x80) {  //  keyup
-        scan_code-= 0x80;
-    }
-    u32 c = scan_code*3;
-    if (preScanCode == 0xE0) {
-        c+= 2;
-    }  
-    c = keymap[c];
-    dispColor = 0x02;
-    dispInt(c);
-    dispChar(c, 0x04);
-
-    preScanCode = scan_code;
+    if (keyBuf.count < KEY_BUF_SIZE) {
+        *(keyBuf.head++) = scan_code;
+        if (keyBuf.head >= keyBuf.buf + KEY_BUF_SIZE) {
+            keyBuf.head = keyBuf.buf;
+        }
+        keyBuf.count++;
+    }   
 }
 
 // 时钟中断处理程序 
@@ -656,8 +654,6 @@ void clockHandler(){
 
     // 没有中断重入，进程运行时发生的中断，可以进行进程切换
     schedule();
-    dispChar('~', 0x0c);
-    delayMs(3000);
 }
 
 // 
@@ -704,12 +700,17 @@ void memSet(u8* to, u8 val, u32 size){
 
 // 整数转换为16进制字符串
 void itos(u32 a, char* p){
+    u8 preZero = 1;
     for (int i=0;i<8; i++) {
         char w = (a>>(28-i*4)) & 0x0f;
         if (w>=10) {
-            *(p+i) = w +'A' - 10;
+            *(p++) = w +'A' - 10;
+            preZero = 0;
+        } else if(w==0 && preZero){
+            continue;
         }else {
-            *(p+i) = w +'0';
+            *(p++) = w +'0';
+            preZero = 0;
         }
     }
 }
@@ -734,19 +735,143 @@ void dispInt(u32 a){
     dispStr(b);
 } 
 
-// 测试进程AQ1
-void processA(){
+void taskTty(){
     while(1) {
-        if (dispPos > 160*24) dispPos = 160;
-        // dispInt(ticks);
+        u32 key =keyboardRead(0);
+        if (!(key& KEYBOARD_FLAG_EXT)) {  // 是否为可打印字符
+            dispChar(key & 0x7f, 0x01);
+        } else {
+            dispColor = 0x04;
+            dispInt(key);
+        }
+        dispChar(' ', 0x01);
     }
+}
+
+u8 getByteFromKeybuf(){
+    while (keyBuf.count <=0);
+
+    u8 scanCode = *(keyBuf.tail ++);
+    dispColor = 0X02; dispInt(scanCode); // todo
+    keyBuf.count --;
+    if (keyBuf.tail >= keyBuf.buf + KEY_BUF_SIZE) {
+        keyBuf.tail = keyBuf.buf;
+    }
+    return scanCode;
+}
+
+
+u32 keyboardRead(u32 mask){
+    u8 scan_code = getByteFromKeybuf();
+    
+    if (scan_code == 0xE1) { 
+        if (getByteFromKeybuf() == 0x1D)
+        {
+            if (getByteFromKeybuf() == 0x45)
+            {
+                if (getByteFromKeybuf() == 0xE1)
+                {
+                    if (getByteFromKeybuf() == 0x9D)
+                    {
+                        if (getByteFromKeybuf() == 0xC5)
+                        {
+                            return PAUSEBREAK | (mask & 0xffffff00);
+                        }
+                    }
+                }
+            }
+        }      
+    }
+
+    u32 startWithE0 = 0;
+    if (scan_code == 0xE0)
+    {
+        scan_code = getByteFromKeybuf();
+        if (scan_code== 0x2A)
+        {
+            if (getByteFromKeybuf() == 0xE0)
+            {
+                if (getByteFromKeybuf() == 0x37)
+                {
+                    return PRINTSCREEN | (mask & 0xffffff00);  // keydown 
+                }
+            }
+        }else if (scan_code == 0xB7)
+        {
+            if (getByteFromKeybuf() == 0xE0)
+            {
+                if (getByteFromKeybuf() == 0xAA)
+                {
+                    return PRINTSCREEN | (mask & 0xffffff80);  // keyup
+                }
+            }
+        }else {
+            startWithE0 = 1;
+        }
+    }
+    
+    u32 col = 0;
+    if (startWithE0) {
+        col = 2;
+    }else if ( mask & (KEYBOARD_FLAG_SHIFT_L | KEYBOARD_FLAG_SHIFT_R)) {
+        col = 1;
+    }
+    
+    u32 isKeyup = scan_code & KEYBOARD_FLAG_BREAK;
+    u32 key = keymap[ (scan_code & 0x7F)*MAP_COLS +col];
+    u32 flags = 0;
+    // todo keyup remove, keydown add
+    if (key == CTRL_R )  {
+        flags |= KEYBOARD_FLAG_CTRL_R;
+        key = 0;
+    } else if (key == ALT_R ){
+        flags |=  KEYBOARD_FLAG_CTRL_R;
+        key = 0;
+    } else if (key == SHIFT_R){
+        flags |=  KEYBOARD_FLAG_SHIFT_R;
+        key = 0;
+    } else if (key == CTRL_L){
+        flags |=  KEYBOARD_FLAG_CTRL_L;
+        key = 0;
+    } else if (key == ALT_L){
+        flags |=  KEYBOARD_FLAG_ALT_L;
+        key = 0;
+    } else if (key == SHIFT_L){
+        flags |=  KEYBOARD_FLAG_SHIFT_L;
+        key = 0;
+    } 
+
+    if (key == 0 ) { 
+        // if ()
+
+        if (isKeyup) {   // 取消 shift\alt\ctrl 标记
+            mask &= (~flags);
+        }else {          // 添加 shift\alt\ctrl 标记
+            mask |= flags;
+        }
+    }
+
+    if (!key || isKeyup) {  
+        return keyboardRead(mask);
+    }else { 
+        return key | (mask & 0xffffff00) | isKeyup; 
+    }
+
+    // 不响应的按键： shift\alt\ctrl的按下不响应，其他案件的弹起不响应
+    // if ( (!isKeyup && !key) 
+    //     || (isKeyup && key) ) {  
+    //     return keyboardRead(mask);
+    // }else { // 响应的按键： shift\alt\ctrl的弹起，其他案件的按下
+    //     if (key == 0) mask = mask | KEYBOARD_FLAG_EXT ; // shift\alt\ctrl键应为不可打印
+    //     return key | (mask & 0xffffff00) | isKeyup; 
+    // }
 }
 
 // 测试进程B
 void processB(){
     char a = 'a';
     while(1) {
-        dispChar(a++, 0x0f);
+        // dispChar(a++, 0x0f);
         if (a >  'z') a = 'a';
     }
 }
@@ -755,7 +880,7 @@ void processB(){
 void processC(){
     char a = '0';
     while(1) {
-        dispChar(a++, 0x01);
+        // dispChar(a++, 0x01);
         if (a >  '9') a = '0';
     }
 }
