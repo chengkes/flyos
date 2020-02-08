@@ -23,6 +23,15 @@
 #define PORT_KEYBOARD_DATA  0x60
 #define PORT_KEYBOARD_STATE 0x64
 
+// 显示器端口
+#define PORT_DISPLAY_CRTC_ADDR  0x3D4
+#define PORT_DISPLAY_CRTC_DATA  0x3D5
+
+#define CRTC_CURSOR_LOC_H  0x0E
+#define CRTC_CURSOR_LOC_L  0x0F
+#define CRTC_START_ADDR_H  0x0C
+#define CRTC_START_ADDR_L  0x0D
+
 /*----------------------------------------------------------------------------
 ; 描述符类型值说明
 ; 其中:
@@ -477,6 +486,7 @@ void hwint15();
 void Handler();
 
 ///-----------------------------------
+void setCursorPos ( );
 void addPCB(u32 num, u32 entry, u32 priority);
 void buildIdt();
 void clockHandler();
@@ -726,6 +736,23 @@ void dispStr(char* p){
         }
         p++;
     }
+
+    setCursorPos();
+}
+
+void setCursorPos (){
+    u32 pos = dispPos/ 2;
+    outByte(CRTC_CURSOR_LOC_L, PORT_DISPLAY_CRTC_ADDR );
+    outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
+    outByte(CRTC_CURSOR_LOC_H, PORT_DISPLAY_CRTC_ADDR );
+    outByte( (pos>>8) & 0xff, PORT_DISPLAY_CRTC_DATA);
+}
+
+void scrollTo(u32 pos){ 
+    outByte(CRTC_START_ADDR_L, PORT_DISPLAY_CRTC_ADDR );
+    outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
+    outByte(CRTC_START_ADDR_H, PORT_DISPLAY_CRTC_ADDR );
+    outByte( (pos>>8) & 0xff, PORT_DISPLAY_CRTC_DATA);
 }
 
 // 显示整数 
@@ -741,10 +768,16 @@ void taskTty(){
         if (!(key& KEYBOARD_FLAG_EXT)) {  // 是否为可打印字符
             dispChar(key & 0x7f, 0x01);
         } else {
+            if ( key == DOWN) {
+                scrollTo(80*15);
+            }else if (key == UP) {
+                scrollTo(80*0);
+            }
             dispColor = 0x04;
             dispInt(key);
         }
         dispChar(' ', 0x01);
+        // setCursorPos();
     }
 }
 

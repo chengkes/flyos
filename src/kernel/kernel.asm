@@ -54,6 +54,7 @@ extern isInt
 extern hwintHandlerTable
 extern osinit
 extern osmain
+extern setCursorPos 
 
 _start:
     mov     esp, StackTop       ; 重新设置
@@ -95,6 +96,7 @@ dispChar:
     mov     [gs:ebx], ax
     add     ebx, 2
     mov     [dispPos], ebx
+    ; call    setCursorPos
     pop     ebx
     pop     eax
     ret
