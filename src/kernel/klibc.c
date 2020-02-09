@@ -7,7 +7,7 @@
 #define PORT_8259A_SLAVE1 0xA0
 #define PORT_8259A_SLAVE2 0xA1
 // 外部中断对应中断号
-#define INT_VECTOR_IRQ0    0x20            
+#define INT_VECTOR_IRQ0    0x20
 #define INT_VECTOR_IRQ8    0x28
 // 时钟8253芯片端口
 #define PORT_CLOCK_COUNTER0  0x40
@@ -45,7 +45,7 @@
 ;       其它 : 可按照字面意思理解
 ;----------------------------------------------------------------------------*/
 #define  DA_32			0x40	// D?B: 32 位段
-#define  DA_LIMIT_4K	0x80	// G: 段界限粒度为 4K 字节  
+#define  DA_LIMIT_4K	0x80	// G: 段界限粒度为 4K 字节
 #define  DA_DPL0		0x00	// DPL = 0
 #define  DA_DPL1		0x20	// DPL = 1
 #define  DA_DPL2		0x40	// DPL = 2
@@ -77,9 +77,9 @@
 #define SA_RPL0			0	// ┓
 #define SA_RPL1			1	// ┣ RPL
 #define SA_RPL2			2	// ┃
-#define SA_RPL3			3	// ┛ 
-#define SA_TIG			0	// TI=0, GDT 
-#define SA_TIL			4	// TI=1, LDT 
+#define SA_RPL3			3	// ┛
+#define SA_TIG			0	// TI=0, GDT
+#define SA_TIL			4	// TI=1, LDT
 
 // LDT中 选择子
 #define LDT_SELECTOR_D32        (0x00 | SA_TIL | SA_RPL1)   // 数据段 选择子
@@ -120,19 +120,19 @@ typedef char  s8;
 typedef struct _Descriptor {
     u16  	limit;	    // 段界限1
 	u16     base1; 		// 段基址1
-	u8	    base2;		// 段基址2	
+	u8	    base2;		// 段基址2
 	u8      attrType;   // P, DPL(2), S, TYPE(4)
     u8      attr2;      // G, D/B, 0, AVL, 段界限2(4)
-	u8	    base3;		// 段基址3	
+	u8	    base3;		// 段基址3
 } Descriptor;
 
 // 门
 typedef struct _Gate {
-	u16 offset1; 	// 偏移1  
-	u16 selector;	// 选择子 
-	u8 pcount;      // 属性, 参数个数	  
+	u16 offset1; 	// 偏移1
+	u16 selector;	// 选择子
+	u8 pcount;      // 属性, 参数个数
     u8 attrType;    // 属性 P(1),DPL(2),S(1),TYPE(4)
-	u16 offset2; 	// 偏移2  
+	u16 offset2; 	// 偏移2
 } Gate;
 
 typedef struct _TSS {
@@ -162,17 +162,17 @@ typedef struct _TSS {
 	u32	gs;
 	u32	ldt;
 	u16	trap;
-	u16	iobase;	// I/O位图基址大于或等于TSS段界限，就表示没有I/O许可位图  
-	// u8	iomap[2]; 
-}TSS;    
+	u16	iobase;	// I/O位图基址大于或等于TSS段界限，就表示没有I/O许可位图
+	// u8	iomap[2];
+}TSS;
 
 // 进程控制块
 typedef struct _PCB {
-    u32 edi;  
+    u32 edi;
     u32 esi;
     u32 ebp;
-    u32 esp;  
-    u32 ebx; 
+    u32 esp;
+    u32 ebx;
     u32 edx;
     u32 ecx;
     u32 eax;
@@ -180,19 +180,19 @@ typedef struct _PCB {
     u32 ds;
     u32 es;
     u32 fs;
-    u32 gs;   
+    u32 gs;
 
-    u32 eip;   
-    u32 cs;   
+    u32 eip;
+    u32 cs;
     u32 eflags;
-    u32 p_esp;    
+    u32 p_esp;
     u32 ss;
 
     u16  ldtSel;                        //第17个，此处至开头数据的位置需要保持不变
-    Descriptor ldt[2];  
+    Descriptor ldt[2];
     u32 entry;                          // 进程入口
     u32 priority;                       // 优先级
-    int ticks;  
+    int ticks;
     char name[16];                      // 进程名称
     u8 pstack[PROCESS_STACK_SIZE];      // 进程堆栈
 } PCB ;
@@ -416,45 +416,45 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
 /* 0x54 - Enter		*/	0,		0,		0,
 /* 0x55 - ???		*/	0,		0,		0,
 /* 0x56 - ???		*/	0,		0,		0,
-/* 0x57 - F11		*/	F11,		F11,		0,	
-/* 0x58 - F12		*/	F12,		F12,		0,	
-/* 0x59 - ???		*/	0,		0,		0,	
-/* 0x5A - ???		*/	0,		0,		0,	
-/* 0x5B - ???		*/	0,		0,		GUI_L,	
-/* 0x5C - ???		*/	0,		0,		GUI_R,	
-/* 0x5D - ???		*/	0,		0,		APPS,	
-/* 0x5E - ???		*/	0,		0,		0,	
+/* 0x57 - F11		*/	F11,		F11,		0,
+/* 0x58 - F12		*/	F12,		F12,		0,
+/* 0x59 - ???		*/	0,		0,		0,
+/* 0x5A - ???		*/	0,		0,		0,
+/* 0x5B - ???		*/	0,		0,		GUI_L,
+/* 0x5C - ???		*/	0,		0,		GUI_R,
+/* 0x5D - ???		*/	0,		0,		APPS,
+/* 0x5E - ???		*/	0,		0,		0,
 /* 0x5F - ???		*/	0,		0,		0,
 /* 0x60 - ???		*/	0,		0,		0,
-/* 0x61 - ???		*/	0,		0,		0,	
-/* 0x62 - ???		*/	0,		0,		0,	
-/* 0x63 - ???		*/	0,		0,		0,	
-/* 0x64 - ???		*/	0,		0,		0,	
-/* 0x65 - ???		*/	0,		0,		0,	
-/* 0x66 - ???		*/	0,		0,		0,	
-/* 0x67 - ???		*/	0,		0,		0,	
-/* 0x68 - ???		*/	0,		0,		0,	
-/* 0x69 - ???		*/	0,		0,		0,	
-/* 0x6A - ???		*/	0,		0,		0,	
-/* 0x6B - ???		*/	0,		0,		0,	
-/* 0x6C - ???		*/	0,		0,		0,	
-/* 0x6D - ???		*/	0,		0,		0,	
-/* 0x6E - ???		*/	0,		0,		0,	
-/* 0x6F - ???		*/	0,		0,		0,	
-/* 0x70 - ???		*/	0,		0,		0,	
-/* 0x71 - ???		*/	0,		0,		0,	
-/* 0x72 - ???		*/	0,		0,		0,	
-/* 0x73 - ???		*/	0,		0,		0,	
-/* 0x74 - ???		*/	0,		0,		0,	
-/* 0x75 - ???		*/	0,		0,		0,	
-/* 0x76 - ???		*/	0,		0,		0,	
-/* 0x77 - ???		*/	0,		0,		0,	
-/* 0x78 - ???		*/	0,		0,		0,	
-/* 0x78 - ???		*/	0,		0,		0,	
-/* 0x7A - ???		*/	0,		0,		0,	
-/* 0x7B - ???		*/	0,		0,		0,	
-/* 0x7C - ???		*/	0,		0,		0,	
-/* 0x7D - ???		*/	0,		0,		0,	
+/* 0x61 - ???		*/	0,		0,		0,
+/* 0x62 - ???		*/	0,		0,		0,
+/* 0x63 - ???		*/	0,		0,		0,
+/* 0x64 - ???		*/	0,		0,		0,
+/* 0x65 - ???		*/	0,		0,		0,
+/* 0x66 - ???		*/	0,		0,		0,
+/* 0x67 - ???		*/	0,		0,		0,
+/* 0x68 - ???		*/	0,		0,		0,
+/* 0x69 - ???		*/	0,		0,		0,
+/* 0x6A - ???		*/	0,		0,		0,
+/* 0x6B - ???		*/	0,		0,		0,
+/* 0x6C - ???		*/	0,		0,		0,
+/* 0x6D - ???		*/	0,		0,		0,
+/* 0x6E - ???		*/	0,		0,		0,
+/* 0x6F - ???		*/	0,		0,		0,
+/* 0x70 - ???		*/	0,		0,		0,
+/* 0x71 - ???		*/	0,		0,		0,
+/* 0x72 - ???		*/	0,		0,		0,
+/* 0x73 - ???		*/	0,		0,		0,
+/* 0x74 - ???		*/	0,		0,		0,
+/* 0x75 - ???		*/	0,		0,		0,
+/* 0x76 - ???		*/	0,		0,		0,
+/* 0x77 - ???		*/	0,		0,		0,
+/* 0x78 - ???		*/	0,		0,		0,
+/* 0x78 - ???		*/	0,		0,		0,
+/* 0x7A - ???		*/	0,		0,		0,
+/* 0x7B - ???		*/	0,		0,		0,
+/* 0x7C - ???		*/	0,		0,		0,
+/* 0x7D - ???		*/	0,		0,		0,
 /* 0x7E - ???		*/	0,		0,		0,
 /* 0x7F - ???		*/	0,		0,		0
 };
@@ -519,12 +519,12 @@ void osinit(){
     keyBuf.tail = keyBuf.head = keyBuf.buf;
 
     //将GDT从loader移动到kernel,执行前gdtPtr存放loader中GDT PTR信息,执行后gdtPtr存放kernel中GDT PTR信息
-    memCpy((u8*)&gdt,(u8*) (*((u32*)(gdtPtr+2))), *((u16*)gdtPtr)+1);  
+    memCpy((u8*)&gdt,(u8*) (*((u32*)(gdtPtr+2))), *((u16*)gdtPtr)+1);
     *((u16*)gdtPtr) = (u16)(sizeof(gdt)-1);         // GDT limit
     *((u32*)(gdtPtr+2))= (u32)&gdt;                 // GDT base
 
     init8259a();
-    buildIdt();    
+    buildIdt();
 
     // 初始化时钟中断频率
     outByte(CLOCK_MODE, PORT_CLOCK_CONTROL);
@@ -546,11 +546,11 @@ void osinit(){
     dispStr("\n\n  Welcome to Fly OS! \n\n");
 }
 
-// 添加进程 
+// 添加进程
 // num, 进程号， 必须是从0开始的连续数，且小于PCB_SIZE
 // entry, 进程入口地址
 // priority, 进程优先级，越大优先级越高
-void addPCB(u32 num, u32 entry, u32 priority) {  
+void addPCB(u32 num, u32 entry, u32 priority) {
     if (num >= PCB_SIZE) return;
     u32 ldtSel = GDT_SELECTOR_LDT + num*sizeof(Descriptor);
     PCB *pcb = &pcbs[num];
@@ -571,7 +571,7 @@ void addPCB(u32 num, u32 entry, u32 priority) {
 /// 初始化中断控制器8259A
 void init8259a(){
     outByte(0x11, PORT_8259A_MASTER1);     // 写ICW1
-    outByte(0x11, PORT_8259A_SLAVE1); 
+    outByte(0x11, PORT_8259A_SLAVE1);
 
     outByte(INT_VECTOR_IRQ0, PORT_8259A_MASTER2);     // 写ICW2 ,主片IRQ0-IRQ7对应中断号
     outByte(INT_VECTOR_IRQ8, PORT_8259A_SLAVE2);      // 写ICW2 ,从片IRQ8-IRQ15对应中断号
@@ -583,7 +583,7 @@ void init8259a(){
     outByte(0x01, PORT_8259A_SLAVE2);
 
     outByte(0x0fc, PORT_8259A_MASTER2);     // 写OCW1, 主片打开时钟中断、键盘终端
-    outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断 
+    outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断
 }
 
 /// 建立IDT
@@ -616,7 +616,7 @@ void buildIdt(){
     }
 
     *((u16*)idtPtr) = (u16)(sizeof(idt)-1);
-    *((u32*)(idtPtr+2))= (u32)&idt;   
+    *((u32*)(idtPtr+2))= (u32)&idt;
 }
 
  // 硬件中断默认处理程序
@@ -627,9 +627,9 @@ void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr){
     p->base1 = 0xffff & base;
     p->base2 = 0xff & (base>>16);
     p->base3 = 0xff & (base>>24);
-    p->limit = 0xffff & limit;   
+    p->limit = 0xffff & limit;
     p->attrType = attrType;
-    p->attr2 = (0x0f &(limit>>16) ) | (0xf0 & attr); 
+    p->attr2 = (0x0f &(limit>>16) ) | (0xf0 & attr);
 }
 
 // 初始化 门 描述符
@@ -642,7 +642,7 @@ void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) {
 }
 
 // 键盘中断处理程序， todo
-void keyboardHandler(){  
+void keyboardHandler(){
     u8 scan_code =inByte(PORT_KEYBOARD_DATA);
 
     if (keyBuf.count < KEY_BUF_SIZE) {
@@ -651,10 +651,10 @@ void keyboardHandler(){
             keyBuf.head = keyBuf.buf;
         }
         keyBuf.count++;
-    }   
+    }
 }
 
-// 时钟中断处理程序 
+// 时钟中断处理程序
 void clockHandler(){
     ticks++;
     (currentPcb->ticks)--;
@@ -666,7 +666,7 @@ void clockHandler(){
     schedule();
 }
 
-// 
+//
 void delayMs(u32 t) {
     u32 t1 = ticks;
     while ((ticks - t1 )*1000/CLOCK_COUNTER0_HZ <= t);
@@ -736,31 +736,29 @@ void dispStr(char* p){
         }
         p++;
     }
-
-    setCursorPos();
 }
 
 void setCursorPos (){
-    u32 pos = dispPos/ 2;
+    u32 pos = dispPos/ 2 ;
     outByte(CRTC_CURSOR_LOC_L, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
     outByte(CRTC_CURSOR_LOC_H, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos>>8) & 0xff, PORT_DISPLAY_CRTC_DATA);
 }
 
-void scrollTo(u32 pos){ 
+void scrollTo(u32 pos){
     outByte(CRTC_START_ADDR_L, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
     outByte(CRTC_START_ADDR_H, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos>>8) & 0xff, PORT_DISPLAY_CRTC_DATA);
 }
 
-// 显示整数 
+// 显示整数
 void dispInt(u32 a){
     char b[9]="";
     itos(a, b);
     dispStr(b);
-} 
+}
 
 void taskTty(){
     while(1) {
@@ -777,7 +775,6 @@ void taskTty(){
             dispInt(key);
         }
         dispChar(' ', 0x01);
-        // setCursorPos();
     }
 }
 
@@ -796,8 +793,8 @@ u8 getByteFromKeybuf(){
 
 u32 keyboardRead(u32 mask){
     u8 scan_code = getByteFromKeybuf();
-    
-    if (scan_code == 0xE1) { 
+
+    if (scan_code == 0xE1) {
         if (getByteFromKeybuf() == 0x1D)
         {
             if (getByteFromKeybuf() == 0x45)
@@ -813,7 +810,7 @@ u32 keyboardRead(u32 mask){
                     }
                 }
             }
-        }      
+        }
     }
 
     u32 startWithE0 = 0;
@@ -826,7 +823,7 @@ u32 keyboardRead(u32 mask){
             {
                 if (getByteFromKeybuf() == 0x37)
                 {
-                    return PRINTSCREEN | (mask & 0xffffff00);  // keydown 
+                    return PRINTSCREEN | (mask & 0xffffff00);  // keydown
                 }
             }
         }else if (scan_code == 0xB7)
@@ -842,14 +839,14 @@ u32 keyboardRead(u32 mask){
             startWithE0 = 1;
         }
     }
-    
+
     u32 col = 0;
     if (startWithE0) {
         col = 2;
     }else if ( mask & (KEYBOARD_FLAG_SHIFT_L | KEYBOARD_FLAG_SHIFT_R)) {
         col = 1;
     }
-    
+
     u32 isKeyup = scan_code & KEYBOARD_FLAG_BREAK;
     u32 key = keymap[ (scan_code & 0x7F)*MAP_COLS +col];
     u32 flags = 0;
@@ -872,11 +869,11 @@ u32 keyboardRead(u32 mask){
     } else if (key == SHIFT_L){
         flags |=  KEYBOARD_FLAG_SHIFT_L;
         key = 0;
-    } 
+    }
 
-    if (key == 0 ) { 
-        if (isKeyup && mask == flags) {          
-            return KEYBOARD_FLAG_EXT | (mask & 0xffffff00) | isKeyup; // 单独按下 shift\alt\ctrl 
+    if (key == 0 ) {
+        if (isKeyup && mask == flags) {
+            return KEYBOARD_FLAG_EXT | (mask & 0xffffff00) | isKeyup; // 单独按下 shift\alt\ctrl
         }
 
         if (isKeyup) {   // 取消 shift\alt\ctrl 标记
@@ -886,19 +883,19 @@ u32 keyboardRead(u32 mask){
         }
     }
 
-    if (!key || isKeyup) {  
+    if (!key || isKeyup) {
         return keyboardRead(mask);
-    }else { 
-        return key | (mask & 0xffffff00) | isKeyup; 
+    }else {
+        return key | (mask & 0xffffff00) | isKeyup;
     }
 
     // 不响应的按键： shift\alt\ctrl的按下不响应，其他案件的弹起不响应
-    // if ( (!isKeyup && !key) 
-    //     || (isKeyup && key) ) {  
+    // if ( (!isKeyup && !key)
+    //     || (isKeyup && key) ) {
     //     return keyboardRead(mask);
     // }else { // 响应的按键： shift\alt\ctrl的弹起，其他案件的按下
     //     if (key == 0) mask = mask | KEYBOARD_FLAG_EXT ; // shift\alt\ctrl键应为不可打印
-    //     return key | (mask & 0xffffff00) | isKeyup; 
+    //     return key | (mask & 0xffffff00) | isKeyup;
     // }
 }
 
