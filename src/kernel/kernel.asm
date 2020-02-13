@@ -23,9 +23,6 @@ TSS_ESP0      equ   1*4
 [section .text]  
 
 global  _start
-global  dispChar
-global  inByte
-global  outByte
 
 global  hwint00
 global  hwint01
@@ -47,14 +44,11 @@ global  Handler
 
 extern gdtPtr
 extern idtPtr
-extern dispPos  
 extern currentPcb
 extern tss
 extern isInt
 extern hwintHandlerTable
 extern osinit
-extern osmain
-extern setCursorPos 
 
 _start:
     mov     esp, StackTop       ; 重新设置
@@ -65,7 +59,9 @@ _start:
     lidt    [idtPtr]
     mov     ax, GDT_SELECTOR_TSS                
     ltr     ax
+    
     ; jmp     GDT_SELECTOR_C32: restart  ; 测试GDT是否正确
+
 restart:    ; 进入低特权级，执行进程 
     mov     esp, [currentPcb]           ; 指向即将运行的进程PCB开始处，即寄存器数据开始处
     lldt    [esp + PCB_LDT_SEL]
@@ -83,49 +79,7 @@ restart_int:
 .wait:
     hlt
     jmp     .wait  
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 显示字符
-; void dispChar(char c, u8 color)
-dispChar:
-    push    eax
-    push    ebx
-    mov     al, [esp+8+4]
-    mov     ah, [esp+8+8]
-    mov     ebx, [dispPos]
-    mov     [gs:ebx], ax
-    add     ebx, 2
-    mov     [dispPos], ebx
-    ; call    setCursorPos
-    pop     ebx
-    pop     eax
-    ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 读端口
-; u8 inByte(u16 port)
-inByte:
-    push    edx
-    mov     edx, [esp+8]
-    in      al, dx
-    nop
-    nop
-    pop     edx
-    ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 写端口
-; void outByte(u8 data, u16 port)
-outByte:
-    push    eax
-    push    edx
-    mov     al, [esp+8+4]
-    mov     edx, [esp+8+8]
-    out     dx, al
-    nop
-    pop     edx
-    pop     eax
-    ret    
+  
 ;---------------------------------------------------------
 ;；----- 8059A 硬件中断处理程序 ---------------------------
 %macro hwint_master 1 
