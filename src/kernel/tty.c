@@ -5,13 +5,12 @@
 #include "tty.h"
 
 static Tty tty;
-u16 dispPos;
 
 void initTty() {
     tty.currentAddr = tty.startAddr = (u16*) VIDEO_ADDR_BASE;
     tty.cursorPosX = tty.cursorPosY = 0;
     tty.defaultColor = white;
-    tty.limit = 2*80*25;
+    tty.limit = 2*MAX_COLS*MAX_ROWS;
 
     addPCB(0, (u32)taskTty, 100);
 }
@@ -24,22 +23,25 @@ void clearScreen(){
     }
 }
 
-// void outChar(char c){
-
-// }
-
 void outChar(char c, Color color){
-
+    u8* p = (tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY);
+    *p++ = c;
+    *p++ = color; 
+    tty.cursorPosY += 1;
+    if (tty.cursorPosY >= MAX_COLS) {
+        tty.cursorPosY = 0;
+        tty.cursorPosX++;
+    }
 }
 
 // 显示字符串
 void dispStr(char* p, u8 color){
     while(*p != 0) {
         if (*p == '\n'){
-            dispPos += 160 - dispPos % 160;
+            // sdispPos += 160 - dispPos % 160;
         }
         else {
-            dispChar(*p, color);
+            outChar(*p, color);
         }
         p++;
     }
@@ -53,7 +55,7 @@ void dispInt(u32 a, u8 color){
 }
 
 void setCursorPos (){
-    u32 pos = dispPos/ 2 ;
+    u32 pos = tty.cursorPosX*80 + tty.cursorPosY;
     outByte(CRTC_CURSOR_LOC_L, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
     outByte(CRTC_CURSOR_LOC_H, PORT_DISPLAY_CRTC_ADDR );
@@ -71,7 +73,7 @@ void taskTty(){
     while(1) {
         u32 key =keyboardRead(0);
         if (!(key& KEYBOARD_FLAG_EXT)) {  // 是否为可打印字符
-            dispChar(key & 0x7f, 0x01);
+            outChar(key & 0x7f, 0x01);
         } else {
             if ( key == DOWN) {
                 scrollTo(80*15);
@@ -80,6 +82,6 @@ void taskTty(){
             }
             dispInt(key, 0x04);
         }
-        dispChar(' ', 0x01);
+        outChar(' ', 0x01);
     }
 }

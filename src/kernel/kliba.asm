@@ -1,8 +1,5 @@
 [section .text] 
 
-extern dispPos
-
-global  dispChar
 global  inByte
 global  outByte
 
@@ -31,22 +28,4 @@ inByte:
     nop
     nop
     pop     edx
-    ret
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 显示字符
-; void dispChar(char c, u8 color)
-dispChar:
-    push    eax
-    push    ebx
-    mov     al, [esp+8+4]
-    mov     ah, [esp+8+8]
-    mov     ebx, [dispPos]
-    mov     [gs:ebx], ax
-    add     ebx, 2
-    mov     [dispPos], ebx
-    ; call    setCursorPos
-    pop     ebx
-    pop     eax
     ret

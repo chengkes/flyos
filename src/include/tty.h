@@ -15,8 +15,12 @@
 
 #define VIDEO_ADDR_BASE     0xb8000
 
+#define MAX_ROWS        25
+#define MAX_COLS        80
+
 void initTty();
 void taskTty();
+void outChar(char ,Color);
 void setCursorPos ( );
 void dispInt(u32, u8);
 void dispStr(char*, u8);
