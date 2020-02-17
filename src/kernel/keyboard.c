@@ -3,6 +3,13 @@
 #include "keyboard.h"
 #include "main.h"
 
+// 键盘端口
+#define PORT_KEYBOARD_DATA  0x60
+#define PORT_KEYBOARD_STATE 0x64
+
+#define MAP_COLS	    3	/* Number of columns in keymap */
+#define NR_SCAN_CODES	0x80	/* Number of scan codes (rows in keymap) */
+
 static u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
 
 /* scan-code			!Shift		Shift		E0 XX	*/
@@ -137,6 +144,39 @@ static u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
 /* 0x7F - ???		*/	0,		0,		0
 };
 
+static KeyBuf keyBuf;
+
+static u8 getByteFromKeybuf(){
+    while (keyBuf.count <=0);
+
+    u8 scanCode = *(keyBuf.tail ++);
+    // dispColor = 0X02; dispInt(scanCode); // todo
+    keyBuf.count --;
+    if (keyBuf.tail >= keyBuf.buf + KEY_BUF_SIZE) {
+        keyBuf.tail = keyBuf.buf;
+    }
+    return scanCode;
+}
+
+// 键盘中断处理程序
+static void keyboardHandler(){
+    u8 scan_code =inByte(PORT_KEYBOARD_DATA);
+
+    if (keyBuf.count < KEY_BUF_SIZE) {
+        *(keyBuf.head++) = scan_code;
+        if (keyBuf.head >= keyBuf.buf + KEY_BUF_SIZE) {
+            keyBuf.head = keyBuf.buf;
+        }
+        keyBuf.count++;
+    }
+}
+
+void initKeyboard() {
+    keyBuf.count = 0;
+    keyBuf.tail = keyBuf.head = keyBuf.buf;
+
+    putIrqHandler(KEYBOARD_HANDLER_IDX, keyboardHandler);
+}
 
 u32 keyboardRead(u32 mask){
     u8 scan_code = getByteFromKeybuf();

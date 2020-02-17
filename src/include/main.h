@@ -4,23 +4,7 @@
 
 #include "types.h"
 
-// 中断控制器8259A 主片、从片端口号
-#define PORT_8259A_MASTER1 0x20
-#define PORT_8259A_MASTER2 0x21
-#define PORT_8259A_SLAVE1 0xA0
-#define PORT_8259A_SLAVE2 0xA1
-// 外部中断对应中断号
-#define INT_VECTOR_IRQ0    0x20
-#define INT_VECTOR_IRQ8    0x28
-
-// 显示器端口
-#define PORT_DISPLAY_CRTC_ADDR  0x3D4
-#define PORT_DISPLAY_CRTC_DATA  0x3D5
-
-#define CRTC_CURSOR_LOC_H  0x0E
-#define CRTC_CURSOR_LOC_L  0x0F
-#define CRTC_START_ADDR_H  0x0C
-#define CRTC_START_ADDR_L  0x0D
+// -----  PROTECT  --------------------
 
 /*----------------------------------------------------------------------------
 ; 描述符类型值说明
@@ -78,27 +62,14 @@
 #define GDT_SELECTOR_TSS        0x20    // TSS 选择子
 #define GDT_SELECTOR_LDT        0x28    // LDT 选择子
 
-// LDT中 选择子
-#define LDT_SELECTOR_D32        (0x00 | SA_TIL | SA_RPL1)   // 数据段 选择子
-#define LDT_SELECTOR_C32        (0x08 | SA_TIL | SA_RPL1)   // 代码段 选择子
+#define GDT_SIZE 128
+extern Descriptor gdt[GDT_SIZE];
 
+void initProtectMode() ;
+void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
+void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
 
-// 时钟芯片8253端口
-#define PORT_CLOCK_COUNTER0  0x40
-#define PORT_CLOCK_COUNTER1  0x41
-#define PORT_CLOCK_COUNTER2  0x42
-#define PORT_CLOCK_CONTROL   0x43
-
-#define CLOCK_DEFAULT_HZ    1193180     // 输入频率
-#define CLOCK_COUNTER0_HZ   1000   // 每1ms发生一次时钟中断, 该值必须大于18
-#define CLOCK_MODE          0x34    
-
-// 键盘端口
-#define PORT_KEYBOARD_DATA  0x60
-#define PORT_KEYBOARD_STATE 0x64
-
-//////////////////////////////////////
-// 来自汇编的函数声明
+// ----- 来自汇编的函数声明 --------------------
 void dispChar(char c, u8 color);
 u8 inByte(u16 port);
 void outByte(u8 data, u16 port);
@@ -120,28 +91,33 @@ void hwint14();
 void hwint15();
 
 void Handler();
-
 ///-----------------------------------
-void setCursorPos ( );
-void addPCB(u32 num, u32 entry, u32 priority);
-void buildIdt();
-void clockHandler();
-void defaultHwintHandler();
-void dispInt(u32);
-void dispStr(char*);
-void init8259a();
-void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
-void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
-void keyboardHandler();
-void schedule();
+
+// ----- CLOCK --------------------
+void initClock();
 void delayMs(u32);
-void taskTty();
-u32 keyboardRead(u32 mask);
+// ----------------------------
+
+// ----- PCB --------------------
+void initPcb();
+void schedule();
+PCB* getCurrentPcb();
+void addPCB(u32 num, u32 entry, u32 priority);
+// ----------------------------
+
+// ----- INTERRUPT --------------------
+#define CLOCK_HANDLER_IDX  0
+#define KEYBOARD_HANDLER_IDX  1
+
+void putIrqHandler(u8 no, IrqHandler handler);
+void init8259a();
+void buildIdt();
+// ----------------------------
+
+// -----  LIB  --------------------
+void itos(u32 a, char* p);
 void memSet(u8* to, u8 val, u32 size);
 void memCpy(u8* to, u8* from, u32 size);
-
-// todo
-void processB();
-void processC();
+// ----------------------------
 
 #endif

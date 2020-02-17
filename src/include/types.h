@@ -6,6 +6,8 @@ typedef unsigned int   u32;
 typedef unsigned short u16;
 typedef unsigned char  u8;
 
+typedef void IrqHandler(void);
+
 // 描述符
 typedef struct _Descriptor {
     u16  	limit;	    // 段界限1
@@ -96,5 +98,22 @@ typedef struct _KeyBuf {
     u8* head;
     u8* tail;
 } KeyBuf;
+
+typedef enum _Color{
+	black = 0x00,
+	red = 0x01,
+	green = 0x02,
+	blue = 0x04,
+	white = 0x07
+} Color;
+
+typedef struct _Tty {
+	u16* currentAddr;
+	u16* startAddr;
+	u32 limit;
+	u32 cursorPosX;
+	u32 cursorPosY;
+	Color defaultColor;
+} Tty;
 
 #endif

@@ -3,10 +3,7 @@
 #define KEYBOARD_H
 
 /* Keymap for US MF-2 keyboard. */
-#define MAP_COLS	    3	/* Number of columns in keymap */
-#define NR_SCAN_CODES	0x80	/* Number of scan codes (rows in keymap) */
-
-#define KEYBOARD_FLAG_BREAK	    NR_SCAN_CODES		/* Break Code			*/
+#define KEYBOARD_FLAG_BREAK	    0x80		/* Break Code			*/
 #define KEYBOARD_FLAG_EXT	    0x0100		/* Normal function keys		*/
 #define KEYBOARD_FLAG_SHIFT_L	0x0200		/* Shift key			*/
 #define KEYBOARD_FLAG_SHIFT_R	0x0400		/* Shift key			*/
@@ -100,5 +97,10 @@
 #define PAD_INS		PAD_0			/* Ins		*/
 #define PAD_MID		PAD_5			/* Middle key	*/
 #define PAD_DEL		PAD_DOT			/* Del		*/
+
+// ----- KEYBOARD --------------------
+void initKeyboard();
+u32 keyboardRead(u32 mask);
+// ----------------------------
 
 #endif
