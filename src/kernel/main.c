@@ -11,6 +11,6 @@ void osinit(){
     initKeyboard();
     initTty();
 
-    dispStr("\n\n  Welcome to Fly OS! \n\n", 0x0c);
+    dispStr("\n  Welcome to Fly OS!", 0x0c);
 }
 

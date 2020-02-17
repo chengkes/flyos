@@ -11,20 +11,43 @@ void initTty() {
     tty.cursorPosX = tty.cursorPosY = 0;
     tty.defaultColor = white;
     tty.limit = 2*MAX_COLS*MAX_ROWS;
+    clearScreen();
 
     addPCB(0, (u32)taskTty, 100);
 }
 
 void clearScreen(){
-    u8* p = tty.startAddr;
+    u8* p = (u8*)tty.startAddr;
     for (int i=0; i<tty.limit; i++) {
         *p++ = 0;
         *p++ = tty.defaultColor;
     }
+    tty.cursorPosX = tty.cursorPosY = 0;
+    setCursorPos();
+}
+
+// todo 
+void backspace() {
+    if (tty.cursorPosX==0 && tty.cursorPosY ==0) return;
+
+    // u8* p = (u8*)(tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY - 1);
+    // *p++ = 0;
+    // *p++ = tty.defaultColor; 
+
+    tty.cursorPosY --;
+    if (tty.cursorPosY < 0 ) {
+        if (tty.cursorPosX > 0) {
+            tty.cursorPosY = MAX_COLS -1;
+            tty.cursorPosX --;
+        }else {
+            tty.cursorPosX = tty.cursorPosY = 0;
+        }
+    }
+    setCursorPos();
 }
 
 void outChar(char c, Color color){
-    u8* p = (tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY);
+    u8* p = (u8*)(tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY);
     *p++ = c;
     *p++ = color; 
     tty.cursorPosY += 1;
@@ -32,23 +55,27 @@ void outChar(char c, Color color){
         tty.cursorPosY = 0;
         tty.cursorPosX++;
     }
+
+    setCursorPos();
 }
 
 // 显示字符串
-void dispStr(char* p, u8 color){
+void dispStr(char* p, Color color){
     while(*p != 0) {
         if (*p == '\n'){
-            // sdispPos += 160 - dispPos % 160;
+            tty.cursorPosX ++;
+            tty.cursorPosY = 0;            
         }
         else {
             outChar(*p, color);
         }
         p++;
     }
+    setCursorPos();
 }
 
 // 显示整数
-void dispInt(u32 a, u8 color){
+void dispInt(u32 a, Color color){
     char b[9]="";
     itos(a, b);
     dispStr(b, color);
@@ -77,11 +104,18 @@ void taskTty(){
         } else {
             if ( key == DOWN) {
                 scrollTo(80*15);
+                continue;
             }else if (key == UP) {
                 scrollTo(80*0);
+                continue;
+            }else if (key == LEFT) {
+                clearScreen();
+                continue;
+            }else if (key == BACKSPACE) {
+                backspace();
+                continue;
             }
             dispInt(key, 0x04);
         }
-        outChar(' ', 0x01);
     }
 }

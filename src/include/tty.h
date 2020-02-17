@@ -21,8 +21,9 @@
 void initTty();
 void taskTty();
 void outChar(char ,Color);
-void setCursorPos ( );
-void dispInt(u32, u8);
-void dispStr(char*, u8);
+void clearScreen();
+void setCursorPos();
+void dispInt(u32, Color);
+void dispStr(char*, Color);
 
 #endif

@@ -25,6 +25,7 @@ void itos(u32 a, char* p){
             preZero = 0;
         }
     }
+    *p = 0;
 }
 
 

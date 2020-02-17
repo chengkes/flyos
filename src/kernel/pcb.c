@@ -75,10 +75,8 @@ void addPCB(u32 num, u32 entry, u32 priority) {
     if (num >= PCB_SIZE) return;
     u32 ldtSel = GDT_SELECTOR_LDT + num*sizeof(Descriptor);
     PCB *pcb = &pcbs[num];
-
-    // todo: 与GDT的段基址不同，用于测试地址映射
-    initDescriptor(&pcb->ldt[LDT_SELECTOR_D32 >> 3], 0x1, 0xffff0, DA_DRW | DA_DPL1, DA_LIMIT_4K | DA_32);
-    initDescriptor(&pcb->ldt[LDT_SELECTOR_C32 >> 3], 0x1, 0xffff0, DA_CR | DA_DPL1, DA_LIMIT_4K | DA_32);
+    initDescriptor(&pcb->ldt[LDT_SELECTOR_D32 >> 3], 0, 0xfffff, DA_DRW | DA_DPL1, DA_LIMIT_4K | DA_32);
+    initDescriptor(&pcb->ldt[LDT_SELECTOR_C32 >> 3], 0, 0xfffff, DA_CR | DA_DPL1, DA_LIMIT_4K | DA_32);
     initDescriptor(&gdt[ldtSel>>3], (u32)(&pcb->ldt), sizeof(Descriptor)*LDT_SIZE - 1, DA_LDT | DA_DPL1, 0);
 
     pcb->priority = pcb->ticks = priority;
