@@ -1,0 +1,4 @@
+target remote localhost:1234
+file run/kernel.bin
+b osinit
+c

@@ -1,4 +1,4 @@
-org LoaderOffset
+org 0100h        ;LoaderOffset
 LABEL_START:
     mov		ax, cs
 	mov		ds, ax

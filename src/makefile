@@ -1,9 +1,8 @@
 KenerlEntry=0x30400  # 必须与boot/loader.asm中一致
 
-ASM=yasm 
-ASMFLAGS= -f elf
-GCCFLAGS= -m32 -fno-stack-protector -c -I include -g 
-LDFLAGS=  -m elf_i386 -Ttext $(KenerlEntry)    
+ASMFLAGS= -f elf -g -F stabs
+GCCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
+LDFLAGS=  -m elf_i386 -nostdlib -Ttext $(KenerlEntry)    
 
 run/os.img:run/boot.bin run/loader.bin  run/kernel.bin run/kernel.bin.asm
 	dd if=/dev/zero of=$@ bs=1024 count=1440
@@ -14,19 +13,18 @@ run/os.img:run/boot.bin run/loader.bin  run/kernel.bin run/kernel.bin.asm
 	sudo umount /mnt/floppy
 
 run/boot.bin:boot/boot.asm boot/fat12.inc boot/lib.inc
-	$(ASM) $< -o $@ 
-
+	nasm -I ./boot/ $< -o $@ 
 run/loader.bin:boot/loader.asm boot/fat12.inc boot/lib.inc boot/pm.inc
-	$(ASM) $< -o $@ 
+	nasm -I ./boot/ $< -o $@ 
 
 run/kernel.bin:run/kernel.o run/main.o run/kliba.o run/keyboard.o run/clock.o \
 		run/pcb.o run/interrupt.o run/tty.o run/lib.o run/protect.o 
 	ld $(LDFLAGS) $^ -o $@ 
 
 run/kernel.o:kernel/kernel.asm  
-	$(ASM) $(ASMFLAGS) $< -o $@
+	nasm $(ASMFLAGS) $< -o $@
 run/kliba.o:kernel/kliba.asm   
-	$(ASM) $(ASMFLAGS) $< -o $@
+	nasm $(ASMFLAGS) $< -o $@
 run/main.o: kernel/main.c 
 	gcc $(GCCFLAGS) $< -o $@
 run/keyboard.o: kernel/keyboard.c  
@@ -53,6 +51,12 @@ clean:
 
 compile:run/boot.bin run/loader.bin run/kernel.bin run/kernel.bin.asm
 
+qemu: run/os.img
+	qemu-system-i386 -fda run/os.img -boot a
+debug: run/os.img
+	qemu-system-i386 -S -s -fda run/os.img -boot a &
+	sleep 1
+	gdb --command=run/gdbcmd.txt
 run:run/os.img
 	bochs -q -f run/bochsrc -rc run/debug.txt
 runwin:run/os.img   # for windows
