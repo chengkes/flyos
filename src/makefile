@@ -37,7 +37,8 @@ run/pcb.o: kernel/pcb.c
 	gcc $(GCCFLAGS) $< -o $@
 run/interrupt.o: kernel/interrupt.c  
 	gcc $(GCCFLAGS) $< -o $@
-run/tty.o: kernel/tty.c  
+run/tty.o: kernel/tty.c /usr/include/stdc-predef.h include/types.h \
+ 		include/keyboard.h include/main.h include/types.h include/tty.h 
 	gcc $(GCCFLAGS) $< -o $@
 run/lib.o: kernel/lib.c  
 	gcc $(GCCFLAGS) $< -o $@
@@ -48,7 +49,7 @@ run/kernel.bin.asm:run/kernel.bin
 	ndisasm $< -o $(KenerlEntry) -u -e 0x400 > $@ 
 
 clean:
-	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img
+	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm
 
 compile:run/boot.bin run/loader.bin run/kernel.bin run/kernel.bin.asm
 

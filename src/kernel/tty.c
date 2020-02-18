@@ -8,7 +8,7 @@ static Tty tty;
 
 void initTty() {
     tty.currentAddr = tty.startAddr = (u16*) VIDEO_ADDR_BASE;
-    tty.cursorPosX = tty.cursorPosY = 0;
+    tty.cursorRow = tty.cursorCol = 0;
     tty.defaultColor = white;
     tty.limit = 2*MAX_COLS*MAX_ROWS;
     clearScreen();
@@ -22,38 +22,34 @@ void clearScreen(){
         *p++ = 0;
         *p++ = tty.defaultColor;
     }
-    tty.cursorPosX = tty.cursorPosY = 0;
+    tty.cursorRow = tty.cursorCol = 0;
     setCursorPos();
 }
 
 // todo 
 void backspace() {
-    if (tty.cursorPosX==0 && tty.cursorPosY ==0) return;
+    if (tty.cursorRow==0 && tty.cursorCol ==0) return;
 
     // u8* p = (u8*)(tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY - 1);
     // *p++ = 0;
     // *p++ = tty.defaultColor; 
 
-    tty.cursorPosY --;
-    if (tty.cursorPosY < 0 ) {
-        if (tty.cursorPosX > 0) {
-            tty.cursorPosY = MAX_COLS -1;
-            tty.cursorPosX --;
-        }else {
-            tty.cursorPosX = tty.cursorPosY = 0;
-        }
+    tty.cursorCol --;
+    if (tty.cursorCol < 0 ) {
+        tty.cursorCol = MAX_COLS -1;
+        tty.cursorRow --;
     }
     setCursorPos();
 }
 
 void outChar(char c, Color color){
-    u8* p = (u8*)(tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY);
+    u8* p = (u8*)(tty.currentAddr +tty.cursorRow *MAX_COLS + tty.cursorCol);
     *p++ = c;
     *p++ = color; 
-    tty.cursorPosY += 1;
-    if (tty.cursorPosY >= MAX_COLS) {
-        tty.cursorPosY = 0;
-        tty.cursorPosX++;
+    tty.cursorCol ++;
+    if (tty.cursorCol >= MAX_COLS) {
+        tty.cursorCol = 0;
+        tty.cursorRow++;
     }
 
     setCursorPos();
@@ -63,8 +59,8 @@ void outChar(char c, Color color){
 void dispStr(char* p, Color color){
     while(*p != 0) {
         if (*p == '\n'){
-            tty.cursorPosX ++;
-            tty.cursorPosY = 0;            
+            tty.cursorRow ++;
+            tty.cursorCol = 0;            
         }
         else {
             outChar(*p, color);
@@ -82,7 +78,7 @@ void dispInt(u32 a, Color color){
 }
 
 void setCursorPos (){
-    u32 pos = tty.cursorPosX*80 + tty.cursorPosY;
+    u32 pos = tty.cursorRow*MAX_COLS + tty.cursorCol;
     outByte(CRTC_CURSOR_LOC_L, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
     outByte(CRTC_CURSOR_LOC_H, PORT_DISPLAY_CRTC_ADDR );

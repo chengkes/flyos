@@ -111,8 +111,8 @@ typedef struct _Tty {
 	u16* currentAddr;
 	u16* startAddr;
 	u32 limit;
-	u32 cursorPosX;
-	u32 cursorPosY;
+	u32 cursorRow;
+	u32 cursorCol;
 	Color defaultColor;
 } Tty;
 
