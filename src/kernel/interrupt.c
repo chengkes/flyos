@@ -1,5 +1,6 @@
 #include "types.h"
 #include "lib.h"
+#include "interrupt.h"
 #include "main.h"
 
 // 中断控制器8259A 主片、从片端口号

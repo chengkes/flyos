@@ -69,27 +69,6 @@ void initProtectMode() ;
 void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
 
-// ----- 来自汇编的函数声明 --------------------
-
-void hwint00();
-void hwint01();
-void hwint02();
-void hwint03();
-void hwint04();
-void hwint05();
-void hwint06();
-void hwint07();
-void hwint08();
-void hwint09();
-void hwint10();
-void hwint11();
-void hwint12();
-void hwint13();
-void hwint14();
-void hwint15();
-
-void Handler();
-///-----------------------------------
 
 // ----- CLOCK --------------------
 void initClock();
