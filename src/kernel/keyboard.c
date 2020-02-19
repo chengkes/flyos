@@ -159,7 +159,6 @@ static u8 getByteFromKeybuf(){
     while (keyBuf.count <=0);
 
     u8 scanCode = *(keyBuf.tail ++);
-    // dispColor = 0X02; dispInt(scanCode); // todo
     keyBuf.count --;
     if (keyBuf.tail >= keyBuf.buf + KEY_BUF_SIZE) {
         keyBuf.tail = keyBuf.buf;

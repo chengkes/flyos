@@ -4,7 +4,7 @@
 
 #include "types.h"
 
-// todo 
+// todo : 完善其他颜色
 typedef enum _Color{
 	black = 0x00,
 	red = 0x01,

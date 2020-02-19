@@ -181,7 +181,7 @@ hwint14:
 hwint15:
     hwint_slave 15
 
-; 中断默认处理程序, todo
+; 中断默认处理程序, todo， 添加其他中断处理程序
 Handler:    
     iretd
   
