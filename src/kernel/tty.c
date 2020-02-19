@@ -27,13 +27,12 @@ void clearScreen(){
     setCursorPos();
 }
 
-// todo 
 void backspace() {
     if (tty.cursorRow==0 && tty.cursorCol ==0) return;
 
-    // u8* p = (u8*)(tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY - 1);
-    // *p++ = 0;
-    // *p++ = tty.defaultColor; 
+    u8* p = (u8*)(tty.currentAddr +tty.cursorPosX *MAX_COLS + tty.cursorPosY - 1);
+    *p++ = 0;
+    *p++ = tty.defaultColor; 
 
     tty.cursorCol --;
     if (tty.cursorCol < 0 ) {
@@ -84,6 +83,24 @@ void setCursorPos (){
     outByte( (pos>>8) & 0xff, PORT_DISPLAY_CRTC_DATA);
 }
 
+// todo:通过移动数据，向上滚动一行
+void scrollUp() {
+    u8* p =(u8*) tty.currentAddr;
+    for (int r=0; r<MAX_ROWS-1; r++) { 
+        memCpy(p, p+2*MAX_COLS, 2*MAX_COLS);
+    }
+    
+    p +=  2*(MAX_COLS*(MAX_ROWS-1)) ;
+    for (int c=0; c<2*MAX_COLS, c+=2) {
+        *(p+c)= 0;
+        *(p+c+1) = tty.defaultColor;
+    }
+
+    tty.cursorRow--;
+    setCursorPos();s
+}
+
+// todo:通过改变显示起始地址滚屏
 void scrollTo(u32 pos){
     outByte(CRTC_START_ADDR_L, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
