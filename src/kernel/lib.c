@@ -1,6 +1,5 @@
 
 #include "types.h"
-#include "main.h"
 
 void memCpy(u8* to, u8* from, u32 size){
     for(u32 i=0;i<size; i++) to[i] = from[i];
@@ -27,6 +26,3 @@ void itos(u32 a, char* p){
     }
     *p = 0;
 }
-
-
-

@@ -70,8 +70,7 @@ void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
 
 // ----- 来自汇编的函数声明 --------------------
-u8 inByte(u16 port);
-void outByte(u8 data, u16 port);
+
 void hwint00();
 void hwint01();
 void hwint02();
@@ -104,19 +103,8 @@ PCB* getCurrentPcb();
 void addPCB(u32 num, u32 entry, u32 priority);
 // ----------------------------
 
-// ----- INTERRUPT --------------------
-#define CLOCK_HANDLER_IDX  0
-#define KEYBOARD_HANDLER_IDX  1
 
-void putIrqHandler(u8 no, IrqHandler handler);
-void init8259a();
-void buildIdt();
-// ----------------------------
 
-// -----  LIB  --------------------
-void itos(u32 a, char* p);
-void memSet(u8* to, u8 val, u32 size);
-void memCpy(u8* to, u8* from, u32 size);
-// ----------------------------
+
 
 #endif

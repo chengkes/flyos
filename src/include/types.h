@@ -91,29 +91,6 @@ typedef struct _PCB {
     u8 pstack[PROCESS_STACK_SIZE];      // 进程堆栈
 } PCB ;
 
-#define KEY_BUF_SIZE 128
-typedef struct _KeyBuf {
-    int count;
-    u8 buf[KEY_BUF_SIZE];
-    u8* head;
-    u8* tail;
-} KeyBuf;
 
-typedef enum _Color{
-	black = 0x00,
-	red = 0x01,
-	green = 0x02,
-	blue = 0x04,
-	white = 0x07
-} Color;
-
-typedef struct _Tty {
-	u16* currentAddr;
-	u16* startAddr;
-	u32 limit;
-	u32 cursorRow;
-	u32 cursorCol;
-	Color defaultColor;
-} Tty;
 
 #endif

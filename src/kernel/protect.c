@@ -1,5 +1,6 @@
 
 #include "types.h"
+#include "lib.h"
 #include "main.h"
 
 Descriptor gdt[GDT_SIZE];

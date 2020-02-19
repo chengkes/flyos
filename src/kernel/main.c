@@ -1,6 +1,7 @@
 #include "main.h"
 #include "keyboard.h"
 #include "tty.h"
+#include "interrupt.h"
 
 void osinit(){
     initProtectMode() ;
@@ -11,6 +12,6 @@ void osinit(){
     initKeyboard();
     initTty();
 
-    dispStr("\n  Welcome to Fly OS!", 0x0c);
+    dispStr("\n  ", 0x0c);
 }
 

@@ -1,7 +1,16 @@
 
 #include "types.h"
 #include "keyboard.h"
-#include "main.h"
+#include "interrupt.h"
+#include "lib.h"
+
+#define KEY_BUF_SIZE 128
+typedef struct _KeyBuf {
+    int count;
+    u8 buf[KEY_BUF_SIZE];
+    u8* head;
+    u8* tail;
+} KeyBuf;
 
 // 键盘端口
 #define PORT_KEYBOARD_DATA  0x60

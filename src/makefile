@@ -1,7 +1,10 @@
 KenerlEntry=0x30400  # 必须与boot/loader.asm中一致
 
-ASMFLAGS= -f elf -g -F stabs
-GCCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
+AS=nasm
+CC=gcc
+LD=ld
+ASFLAGS= -f elf -g -F stabs
+CCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
 LDFLAGS=  -m elf_i386 -nostdlib -Ttext $(KenerlEntry)    
 
 C_SRC= $(shell find . -name *.c)
@@ -10,16 +13,16 @@ S_SRC= $(shell find . -name *.s)
 S_OBJ= $(patsubst %.s, %.o, $(S_SRC))
 
 .s.o: 
-	nasm $(ASMFLAGS) $< -o $@
+	$(AS) $(ASFLAGS) $< -o $@
 .c.o:
-	gcc $(GCCFLAGS) $< -o $@ 
+	$(CC) $(CCFLAGS) $< -o $@ 
 
 run/boot.bin:boot/boot.asm boot/fat12.inc boot/lib.inc
-	nasm -I ./boot/ $< -o $@ 
+	$(AS) -I ./boot/ $< -o $@ 
 run/loader.bin:boot/loader.asm boot/fat12.inc boot/lib.inc boot/pm.inc
-	nasm -I ./boot/ $< -o $@ 
+	$(AS) -I ./boot/ $< -o $@ 
 run/kernel.bin: $(S_OBJ) $(C_OBJ) 
-	ld $(LDFLAGS) $^ -o $@ 
+	$(LD) $(LDFLAGS) $^ -o $@ 
 
 run/kernel.bin.asm:run/kernel.bin 
 	ndisasm $< -o $(KenerlEntry) -u -e 0x400 > $@ 

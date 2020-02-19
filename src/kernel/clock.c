@@ -1,5 +1,7 @@
 
 #include "types.h"
+#include "interrupt.h"
+#include "lib.h"
 #include "main.h"
 
 // 时钟芯片8253端口

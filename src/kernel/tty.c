@@ -3,6 +3,7 @@
 #include "keyboard.h"
 #include "main.h"
 #include "tty.h"
+#include "lib.h"
 
 static Tty tty;
 
@@ -43,31 +44,29 @@ void backspace() {
 }
 
 void outChar(char c, Color color){
-    u8* p = (u8*)(tty.currentAddr +tty.cursorRow *MAX_COLS + tty.cursorCol);
-    *p++ = c;
-    *p++ = color; 
-    tty.cursorCol ++;
-    if (tty.cursorCol >= MAX_COLS) {
-        tty.cursorCol = 0;
-        tty.cursorRow++;
+    if (c == '\n') {
+         tty.cursorRow ++;
+         tty.cursorCol = 0;
     }
-
+    else {
+        u8 *p = (u8 *)(tty.currentAddr + tty.cursorRow * MAX_COLS + tty.cursorCol);
+        *p++ = c;
+        *p++ = color;
+        tty.cursorCol++;
+        if (tty.cursorCol >= MAX_COLS)
+        {
+            tty.cursorCol = 0;
+            tty.cursorRow++;
+        }
+    }
     setCursorPos();
 }
 
 // 显示字符串
 void dispStr(char* p, Color color){
     while(*p != 0) {
-        if (*p == '\n'){
-            tty.cursorRow ++;
-            tty.cursorCol = 0;            
-        }
-        else {
-            outChar(*p, color);
-        }
-        p++;
+        outChar(*p++, color);
     }
-    setCursorPos();
 }
 
 // 显示整数

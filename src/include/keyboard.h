@@ -98,6 +98,7 @@
 #define PAD_MID		PAD_5			/* Middle key	*/
 #define PAD_DEL		PAD_DOT			/* Del		*/
 
+
 // ----- KEYBOARD --------------------
 void initKeyboard();
 u32 keyboardRead(u32 mask);
