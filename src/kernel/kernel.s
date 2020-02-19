@@ -60,7 +60,7 @@ _start:
     mov     ax, GDT_SELECTOR_TSS                
     ltr     ax
     
-    ; jmp     GDT_SELECTOR_C32: restart  ; 测试GDT是否正确
+    jmp     GDT_SELECTOR_C32: restart  ; 测试GDT是否正确
 
 restart:    ; 进入低特权级，执行进程 
     mov     esp, [currentPcb]           ; 指向即将运行的进程PCB开始处，即寄存器数据开始处
