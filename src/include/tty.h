@@ -41,6 +41,8 @@ typedef struct _Tty {
 #define MAX_ROWS        25
 #define MAX_COLS        80
 
+#define TTY_COUNT		4
+
 void initTty();
 void taskTty();
 void outChar(char ,Color);

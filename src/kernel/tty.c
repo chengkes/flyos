@@ -5,57 +5,69 @@
 #include "tty.h"
 #include "lib.h"
 
-static Tty tty;
+static Tty tty[TTY_COUNT];
+static u32 currentTtyIdx;
 
 void initTty() {
-    tty.currentAddr = tty.startAddr = (u16*) VIDEO_ADDR_BASE;
-    tty.cursorRow = tty.cursorCol = 0;
-    tty.defaultColor = white;
-    tty.limit = 2*MAX_COLS*MAX_ROWS;
-    clearScreen();
-
+    currentTtyIdx = 0;
+    u32 addr = VIDEO_ADDR_BASE; 
+    for(int i=0; i<TTY_COUNT; i++) {
+        Tty* p = &tty[i];
+        p->currentAddr = p->startAddr = (u16*) addr;
+        p->defaultColor = white;
+        p->limit = 2*MAX_COLS*MAX_ROWS;
+        clearScreen(p);
+        addr += p->limit;
+    }
     addPCB(0, (u32)taskTty, 100);
 }
 
+Tty* getCurrentTty(){
+    return &tty[currentTtyIdx];
+}
+
 void clearScreen(){
-    u8* p = (u8*)tty.startAddr;
-    for (int i=0; i<tty.limit; i++) {
+    Tty* t = getCurrentTty();
+    u8* p = (u8*)t->startAddr;
+    for (int i=0; i<t->limit; i++) {
         *p++ = 0;
-        *p++ = tty.defaultColor;
+        *p++ = t->defaultColor;
     }
-    tty.cursorRow = tty.cursorCol = 0;
+    t->cursorRow = t->cursorCol = 0;
     setCursorPos();
 }
 
 void backspace() {
-    if (tty.cursorRow==0 && tty.cursorCol ==0) return;
+    Tty* t = getCurrentTty();
+    if (t->cursorRow==0 && t->cursorCol ==0) return;
 
-    u8* p = (u8*)(tty.currentAddr +tty.cursorRow *MAX_COLS + tty.cursorCol - 1);
+    u8* p = (u8*)(t->currentAddr +t->cursorRow *MAX_COLS + t->cursorCol - 1);
     *p++ = 0;
-    *p++ = tty.defaultColor; 
+    *p++ = t->defaultColor; 
 
-    tty.cursorCol --;
-    if (tty.cursorCol < 0 ) {
-        tty.cursorCol = MAX_COLS -1;
-        tty.cursorRow --;
+    t->cursorCol --;
+    if (t->cursorCol < 0 ) {
+        t->cursorCol = MAX_COLS -1;
+        t->cursorRow --;
     }
     setCursorPos();
 }
 
 void outChar(char c, Color color){
+    Tty* t = getCurrentTty();
     if (c == '\n') {
-         tty.cursorRow ++;
-         tty.cursorCol = 0;
+         t->cursorRow ++;
+         t->cursorCol = 0;
     }
     else {
-        u8 *p = (u8 *)(tty.currentAddr + tty.cursorRow * MAX_COLS + tty.cursorCol);
+        u8 *p = (u8 *)(t->currentAddr + t->cursorRow * MAX_COLS + t->cursorCol);
         *p++ = c;
         *p++ = color;
-        tty.cursorCol++;
-        if (tty.cursorCol >= MAX_COLS)
+        t->cursorCol++;
+        if (t->cursorCol >= MAX_COLS)
         {
-            tty.cursorCol = 0;
-            tty.cursorRow++;
+            t->cursorCol = 0;
+            t->cursorRow++;
         }
     }
     setCursorPos();
@@ -63,9 +75,7 @@ void outChar(char c, Color color){
 
 // 显示字符串
 void dispStr(char* p, Color color){
-    while(*p != 0) {
-        outChar(*p++, color);
-    }
+    while(*p != 0) outChar(*p++, color);
 }
 
 // 显示整数
@@ -76,10 +86,11 @@ void dispInt(u32 a, Color color){
 }
 
 void setCursorPos (){
-    if (tty.cursorRow >= MAX_ROWS) {
+    Tty* t = getCurrentTty();
+    if (t->cursorRow >= MAX_ROWS) {
         scrollUp();
     }else {
-        u32 pos = tty.cursorRow * MAX_COLS + tty.cursorCol;
+        u32 pos = t->cursorRow * MAX_COLS + t->cursorCol;
         outByte(CRTC_CURSOR_LOC_L, PORT_DISPLAY_CRTC_ADDR);
         outByte((pos)&0xff, PORT_DISPLAY_CRTC_DATA);
         outByte(CRTC_CURSOR_LOC_H, PORT_DISPLAY_CRTC_ADDR);
@@ -89,7 +100,8 @@ void setCursorPos (){
 
 // 通过移动数据，向上滚动一行
 void scrollUp() {
-    u8* p =(u8*) tty.currentAddr;
+    Tty* t = getCurrentTty();
+    u8* p =(u8*) t->currentAddr;
     for (int r=0; r<MAX_ROWS-1; r++) { 
         memCpy(p, p+2*MAX_COLS, 2*MAX_COLS);
         p+= 2*MAX_COLS;
@@ -97,10 +109,10 @@ void scrollUp() {
     
     for (int c=0; c<2*MAX_COLS; c+=2) {
         *(p+c)= 0;
-        *(p+c+1) = tty.defaultColor;
+        *(p+c+1) = t->defaultColor;
     }
 
-    tty.cursorRow--;
+    t->cursorRow--;
     setCursorPos();
 }
 

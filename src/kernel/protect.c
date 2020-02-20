@@ -5,9 +5,7 @@
 
 Descriptor gdt[GDT_SIZE];
 u8 gdtPtr[6];
-
 TSS tss;
-
 
 // 初始化 段 描述符
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr){
@@ -39,6 +37,5 @@ void initProtectMode() {
     tss.ss0 = GDT_SELECTOR_D32;
     tss.iobase = sizeof(TSS);
     initDescriptor(&gdt[GDT_SELECTOR_TSS>>3],(u32) &tss, sizeof(TSS)-1, DA_386TSS, 0 );
-
 }
 

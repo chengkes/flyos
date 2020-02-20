@@ -14,8 +14,8 @@
 #define CLOCK_COUNTER0_HZ   1000   // 每1ms发生一次时钟中断, 该值必须大于18
 #define CLOCK_MODE          0x34    
 
-static u32 ticks;      // 时钟中断发生次数
-u32 isInt ;     // 是否在处理中断程序
+static volatile u32 ticks;      // 时钟中断发生次数
+volatile u32 isInt ;     // 是否在处理中断程序
 
 // 时钟中断处理程序
 static void clockHandler(){
@@ -46,4 +46,3 @@ void delayMs(u32 t) {
     u32 t1 = ticks;
     while ((ticks - t1 )*1000/CLOCK_COUNTER0_HZ <= t);
 }
-

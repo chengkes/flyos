@@ -62,3 +62,4 @@ src/run/os.img
 src/run/test
 src/test/*
 src/run/kernel.bin.asm
+src/.vscode/settings.json
