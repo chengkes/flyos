@@ -19,7 +19,7 @@ u8 idtPtr[6];
 
 // 硬件中断总个数
 #define IRQ_COUNT 16
-u32 hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序
+IrqHandler* hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序
 
 // 硬件中断默认处理程序
 static void defaultHwintHandler(){}
@@ -43,7 +43,7 @@ void init8259a(){
 }
 
 void putIrqHandler(u8 no, IrqHandler handler){
-    hwintHandlerTable[no] = (u32)handler;
+    hwintHandlerTable[no] = handler;
 }
 
 /// 建立IDT
@@ -70,7 +70,7 @@ void buildIdt(){
     initGate(&idt[INT_VECTOR_IRQ8+7], GDT_SELECTOR_C32, (u32)hwint15, DA_386IGate, 0);
 
     for (int i=2 ;i<IRQ_COUNT; i++) {
-        hwintHandlerTable[i] = (u32)defaultHwintHandler;
+        hwintHandlerTable[i] = defaultHwintHandler;
     }
 
     *((u16*)idtPtr) = (u16)(sizeof(idt)-1);

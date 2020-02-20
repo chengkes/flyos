@@ -1,5 +1,6 @@
 
 #include "types.h"
+#include "tty.h"
 #include "main.h"
 
 // LDT中 选择子
@@ -10,13 +11,13 @@
 static PCB pcbs[PCB_SIZE];     // 所有进程
 PCB* currentPcb;        // 当前运行的进程
 
-
 // 测试进程B
 static void processB(){
     char a = 'a';
     while(1) {
-        // dispChar(a++, 0x0f);
+        outChar(a++, green);
         if (a >  'z') a = 'a';
+        delayMs(1000);
     }
 }
 
@@ -24,8 +25,9 @@ static void processB(){
 static void processC(){
     char a = '0';
     while(1) {
-        // dispChar(a++, 0x01);
+        outChar(a++, blue);
         if (a >  '9') a = '0';
+        delayMs(1000);
     }
 }
 
@@ -88,5 +90,3 @@ void addPCB(u32 num, u32 entry, u32 priority) {
     pcb->entry = pcb->eip = entry;
     pcb->p_esp = (u32)(pcb->pstack+PROCESS_STACK_SIZE);
 }
-
-

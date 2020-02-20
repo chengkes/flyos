@@ -4,7 +4,7 @@
 #include "interrupt.h"
 
 void osinit(){
-    initProtectMode() ;
+    initProtectMode();
     init8259a();
     buildIdt();
     initPcb();
@@ -12,6 +12,5 @@ void osinit(){
     initKeyboard();
     initTty();
 
-    dispStr("\n  ", 0x0c);
+    dispStr("\n Welcome FLYOS\n", 0x0c);
 }
-

@@ -7,10 +7,14 @@
 // todo : 完善其他颜色
 typedef enum _Color{
 	black = 0x00,
-	red = 0x01,
+	blue = 0x01,
 	green = 0x02,
-	blue = 0x04,
-	white = 0x07
+	cyan = 0x03,		// 青色 
+	red = 0x04,
+	magenta = 0x03,		// 洋红
+	brown = 0x03,		// 棕色
+	white = 0x07,
+	gray = 0x08
 } Color;
 
 typedef struct _Tty {
@@ -44,5 +48,6 @@ void clearScreen();
 void setCursorPos();
 void dispInt(u32, Color);
 void dispStr(char*, Color);
+void scrollUp() ;
 
 #endif
