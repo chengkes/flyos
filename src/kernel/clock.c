@@ -2,7 +2,7 @@
 #include "types.h"
 #include "interrupt.h"
 #include "lib.h"
-#include "main.h"
+#include "pcb.h"
 
 // 时钟芯片8253端口
 #define PORT_CLOCK_COUNTER0  0x40

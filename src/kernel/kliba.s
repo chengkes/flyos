@@ -2,6 +2,20 @@
 
 global  inByte
 global  outByte
+global  enableInt
+global  disableInt
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; void enableInt()
+enableInt:
+    sti
+    ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; void disableInt()
+disableInt:
+    cli
+    ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 写端口

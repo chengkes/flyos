@@ -77,4 +77,6 @@ void buildIdt(){
     *((u32*)(idtPtr+2))= (u32)&idt;
 }
 
-
+void exceptionHandler(int vec_no, int err_code, int eip, int cs, int eflags) {
+    
+}

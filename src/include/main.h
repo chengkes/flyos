@@ -69,21 +69,9 @@ void initProtectMode() ;
 void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
 
-
 // ----- CLOCK --------------------
 void initClock();
 void delayMs(u32);
 // ----------------------------
-
-// ----- PCB --------------------
-void initPcb();
-void schedule();
-PCB* getCurrentPcb();
-void addPCB(u32 num, u32 entry, u32 priority);
-// ----------------------------
-
-
-
-
 
 #endif

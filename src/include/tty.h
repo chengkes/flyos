@@ -18,14 +18,13 @@ typedef enum _Color{
 } Color;
 
 typedef struct _Tty {
-	u16* currentAddr;
-	u16* startAddr;
+	u32 currentAddr;
+	u32 startAddr;
 	u32 limit;
 	int cursorRow;
 	int cursorCol;
 	Color defaultColor;
 } Tty;
-
 
 // 显示器端口
 #define PORT_DISPLAY_CRTC_ADDR  0x3D4
@@ -41,15 +40,16 @@ typedef struct _Tty {
 #define MAX_ROWS        25
 #define MAX_COLS        80
 
-#define TTY_COUNT		4
+#define TTY_COUNT		3
 
 void initTty();
 void taskTty();
-void outChar(char ,Color);
-void clearScreen();
-void setCursorPos();
-void dispInt(u32, Color);
-void dispStr(char*, Color);
-void scrollUp() ;
+void printf(char* fmt) ;
+void outChar(Tty*, char ,Color);
+void clearScreen(Tty* );
+void setCursorPos(Tty* );
+void dispInt(Tty* t, u32, Color);
+void dispStr(Tty* , char*, Color);
+void scrollUp(Tty* ) ;
 
 #endif

@@ -1,6 +1,7 @@
 #include "main.h"
 #include "keyboard.h"
 #include "tty.h"
+#include "pcb.h"
 #include "interrupt.h"
 
 void osinit(){
@@ -11,6 +12,4 @@ void osinit(){
     initClock();
     initKeyboard();
     initTty();
-
-    dispStr("\n Welcome FLYOS\n", 0x0c);
 }

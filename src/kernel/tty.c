@@ -1,47 +1,51 @@
 
 #include "types.h"
 #include "keyboard.h"
-#include "main.h"
+#include "interrupt.h"
 #include "tty.h"
 #include "lib.h"
+#include "pcb.h"
 
 static Tty tty[TTY_COUNT];
-static u32 currentTtyIdx;
+static volatile int currentTtyIdx;
 
 void initTty() {
     currentTtyIdx = 0;
-    u32 addr = VIDEO_ADDR_BASE; 
+    u32 addr = 0; 
     for(int i=0; i<TTY_COUNT; i++) {
         Tty* p = &tty[i];
-        p->currentAddr = p->startAddr = (u16*) addr;
+        p->currentAddr = p->startAddr = addr;
         p->defaultColor = white;
-        p->limit = 2*MAX_COLS*MAX_ROWS;
-        clearScreen(p);
+        p->limit = 2*MAX_COLS*MAX_ROWS;     
         addr += p->limit;
     }
-    addPCB(0, (u32)taskTty, 100);
 }
 
 Tty* getCurrentTty(){
     return &tty[currentTtyIdx];
 }
 
-void clearScreen(){
-    Tty* t = getCurrentTty();
-    u8* p = (u8*)t->startAddr;
-    for (int i=0; i<t->limit; i++) {
-        *p++ = 0;
-        *p++ = t->defaultColor;
-    }
-    t->cursorRow = t->cursorCol = 0;
-    setCursorPos();
+void printf(char* fmt) {
+    PCB* pcb = getCurrentPcb();
+    Tty* t = & tty[pcb->ttyIdx];
+    dispStr(t, fmt, t->defaultColor);
 }
 
-void backspace() {
-    Tty* t = getCurrentTty();
+void clearScreen(Tty* t ){
+    u8* p = (u8*)( t->startAddr + VIDEO_ADDR_BASE);
+    for (int i=0; i<t->limit; i++) {
+        *p++ = ' ';
+        *p++ = t->defaultColor;
+    }
+    t->currentAddr = t->startAddr;
+    t->cursorRow = t->cursorCol = 0;
+    setCursorPos(t);
+}
+
+void backspace(Tty* t ) {
     if (t->cursorRow==0 && t->cursorCol ==0) return;
 
-    u8* p = (u8*)(t->currentAddr +t->cursorRow *MAX_COLS + t->cursorCol - 1);
+    u8* p = (u8*)(VIDEO_ADDR_BASE + t->currentAddr +2*t->cursorRow *MAX_COLS + 2*t->cursorCol - 2);
     *p++ = 0;
     *p++ = t->defaultColor; 
 
@@ -50,17 +54,16 @@ void backspace() {
         t->cursorCol = MAX_COLS -1;
         t->cursorRow --;
     }
-    setCursorPos();
+    setCursorPos(t);
 }
 
-void outChar(char c, Color color){
-    Tty* t = getCurrentTty();
+void outChar(Tty* t ,char c, Color color){
     if (c == '\n') {
          t->cursorRow ++;
          t->cursorCol = 0;
     }
     else {
-        u8 *p = (u8 *)(t->currentAddr + t->cursorRow * MAX_COLS + t->cursorCol);
+        u8 *p = (u8 *)(VIDEO_ADDR_BASE + t->currentAddr + 2*t->cursorRow * MAX_COLS + 2*t->cursorCol);
         *p++ = c;
         *p++ = color;
         t->cursorCol++;
@@ -70,38 +73,40 @@ void outChar(char c, Color color){
             t->cursorRow++;
         }
     }
-    setCursorPos();
+    setCursorPos(t);
 }
 
 // 显示字符串
-void dispStr(char* p, Color color){
-    while(*p != 0) outChar(*p++, color);
+void dispStr(Tty* t, char* p, Color color){
+    while(*p != 0) outChar(t, *p++, color);
 }
 
 // 显示整数
-void dispInt(u32 a, Color color){
+void dispInt(Tty* t, u32 a, Color color){
     char b[9]="";
     itos(a, b);
-    dispStr(b, color);
+    dispStr(t, b, color);
 }
 
-void setCursorPos (){
-    Tty* t = getCurrentTty();
+void setCursorPos (Tty* t ){
+    if (t != getCurrentTty()) return;
+
     if (t->cursorRow >= MAX_ROWS) {
-        scrollUp();
+        scrollUp(t);
     }else {
-        u32 pos = t->cursorRow * MAX_COLS + t->cursorCol;
+        u32 pos = t->currentAddr/2 + t->cursorRow * MAX_COLS + t->cursorCol;
+        disableInt();
         outByte(CRTC_CURSOR_LOC_L, PORT_DISPLAY_CRTC_ADDR);
         outByte((pos)&0xff, PORT_DISPLAY_CRTC_DATA);
         outByte(CRTC_CURSOR_LOC_H, PORT_DISPLAY_CRTC_ADDR);
         outByte((pos >> 8) & 0xff, PORT_DISPLAY_CRTC_DATA);
+        enableInt();
     }
 }
 
 // 通过移动数据，向上滚动一行
-void scrollUp() {
-    Tty* t = getCurrentTty();
-    u8* p =(u8*) t->currentAddr;
+void scrollUp(Tty* t ) {
+    u8* p =(u8*) (VIDEO_ADDR_BASE + t->currentAddr);
     for (int r=0; r<MAX_ROWS-1; r++) { 
         memCpy(p, p+2*MAX_COLS, 2*MAX_COLS);
         p+= 2*MAX_COLS;
@@ -113,43 +118,55 @@ void scrollUp() {
     }
 
     t->cursorRow--;
-    setCursorPos();
+    setCursorPos(t);
 }
 
-// todo:通过改变显示起始地址滚屏
-void scrollTo(u32 pos){
-    outByte(CRTC_START_ADDR_L, PORT_DISPLAY_CRTC_ADDR );
-    outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
+// 通过改变显示起始地址切换TTY
+void activeTty(int idx){
+    while (idx< 0)  idx += TTY_COUNT;
+    while (idx>= TTY_COUNT)  idx -= TTY_COUNT;
+    
+    u32 pos =  tty[idx].currentAddr/2 ;
+    disableInt();
     outByte(CRTC_START_ADDR_H, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos>>8) & 0xff, PORT_DISPLAY_CRTC_DATA);
+    outByte(CRTC_START_ADDR_L, PORT_DISPLAY_CRTC_ADDR );
+    outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
+    enableInt();
+    currentTtyIdx = idx ;
+    setCursorPos(&tty[currentTtyIdx]);
 }
 
 void taskTty(){
+
+    for (int i=0; i<TTY_COUNT; i++) {
+        Tty* p = &tty[i];
+        clearScreen(p);
+        dispStr(p, "TTY-", white);
+        dispInt(p, i+1, red);
+        outChar(p, '#', red);
+    }
+
     while(1) {
         u32 key =keyboardRead(0);
         if (!(key& KEYBOARD_FLAG_EXT)) {  // 是否为可打印字符
-            outChar(key & 0x7f, 0x01);
+            outChar(getCurrentTty(), key & 0x7f, 0x01);
         } else {
             if ( key == DOWN) {
-                scrollTo(80*15);
-                continue;
-            }else if (key == UP) {
-                scrollTo(80*0);
-                continue;
-            }else if (key == LEFT) {
-                clearScreen();
-                continue;
-            }else if (key == BACKSPACE) {
-                backspace();
-                continue;
-            }else if(key == ENTER) {
-                outChar('\n', white);
-                continue;
-            }else if (key ==TAB) {
-                dispStr("    ", white);
-                continue;
+                activeTty(currentTtyIdx +1);
+            // }else if (key == UP) {
+            //     activeTty(currentTtyIdx -1);
+            // }else if (key == LEFT) {
+            //     clearScreen(getCurrentTty());
+            // }else if (key == BACKSPACE) {
+            //     backspace(getCurrentTty());
+            // }else if(key == ENTER) {
+            //     outChar(getCurrentTty(), '\n', white);
+            // }else if (key ==TAB) {
+            //     dispStr(getCurrentTty(), "    ", white);
+            }else {
+                dispInt(getCurrentTty(), key, red);  // todo,  fot tests
             }
-            dispInt(key, 0x04);  // todo,  fot tests
         }
     }
 }

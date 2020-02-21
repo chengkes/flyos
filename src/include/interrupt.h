@@ -12,6 +12,9 @@ void init8259a();
 void buildIdt();
 
 // ----- 来自汇编的函数声明 --------------------
+void enableInt();
+void disableInt();
+
 void hwint00();
 void hwint01();
 void hwint02();
