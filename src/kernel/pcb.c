@@ -5,11 +5,12 @@
 #include "main.h"
 
 // LDT中 选择子
-#define LDT_SELECTOR_D32        (0x00 | SA_TIL | SA_RPL1)   // 数据段 选择子
-#define LDT_SELECTOR_C32        (0x08 | SA_TIL | SA_RPL1)   // 代码段 选择子
+#define LDT_SELECTOR_D32        (0x00 | SA_TIL )   // 数据段 选择子
+#define LDT_SELECTOR_C32        (0x08 | SA_TIL )   // 代码段 选择子
 
-#define PCB_SIZE 4              // 进程控制块 大小
-static PCB pcbs[PCB_SIZE];     // 所有进程
+#define PCB_SIZE 128             // 进程控制块 大小
+static PCB pcbs[PCB_SIZE];       // 所有进程
+static int pcbCount;
 PCB* currentPcb;        // 当前运行的进程
 
 // 测试进程A
@@ -19,7 +20,7 @@ static void processA(){
         printf(a);
         a[0] ++;
         if (a[0] > 'Z') a[0] = 'A';
-        delayMs(1000);
+        // delayMs(1000);
     }
 }
 
@@ -46,12 +47,13 @@ static void processC(){
 }
 
 void initPcb(){
-    // 添加进程
-    addPCB(0, (u32)taskTty, 100, 0);
-    addPCB(1, (u32)processB, 500, 0);
-    addPCB(2, (u32)processC, 200, 0);
-    addPCB(3, (u32)processA, 300, 1);    
+    pcbCount = 0;
     currentPcb = &pcbs[0];
+    
+    addPCB((u32)taskTty, 100, 0, sys_task);
+    // addPCB((u32)processB, 500, 0, sys_task);
+    // addPCB((u32)processC, 200, 0, sys_task);
+    addPCB((u32)processA, 300, 0, user_process);    
 }
 
 PCB* getCurrentPcb(){
@@ -69,14 +71,14 @@ void schedule(){
         return;
     }
     int maxTicks = 0;
-    for (int i=0;i<PCB_SIZE; i++) {
+    for (int i=0;i<pcbCount; i++) {
         if (pcbs[i].ticks > maxTicks) {
             maxTicks = pcbs[i].ticks;
             currentPcb = & pcbs[i];
         }
     }
     if (maxTicks == 0){
-        for (int i=0;i<PCB_SIZE; i++) {
+        for (int i=0;i<pcbCount; i++) {
             pcbs[i].ticks = pcbs[i].priority;
             if (pcbs[i].priority > currentPcb->priority) {
                 currentPcb = & pcbs[i];
@@ -85,26 +87,33 @@ void schedule(){
     }
 }
 
-// 添加进程
-// num, 进程号， 必须是从0开始的连续数，且小于PCB_SIZE
+// 添加新进程
 // entry, 进程入口地址
 // priority, 进程优先级，越大优先级越高
 // ttyIdx, TTY索引
-void addPCB(u32 num, u32 entry, u32 priority, u32 ttyIdx) {
-    if (num >= PCB_SIZE) return;
-    u32 ldtSel = GDT_SELECTOR_LDT + num*sizeof(Descriptor);
-    PCB *pcb = &pcbs[num];
-    initDescriptor(&pcb->ldt[LDT_SELECTOR_D32 >> 3], 0, 0xfffff, DA_DRW | DA_DPL1, DA_LIMIT_4K | DA_32);
-    initDescriptor(&pcb->ldt[LDT_SELECTOR_C32 >> 3], 0, 0xfffff, DA_CR | DA_DPL1, DA_LIMIT_4K | DA_32);
-    initDescriptor(&gdt[ldtSel>>3], (u32)(&pcb->ldt), sizeof(Descriptor)*LDT_SIZE - 1, DA_LDT | DA_DPL1, 0);
-
+// pt, 进程类型，系统任务还是用户进程
+void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
+    if (pcbCount >= PCB_SIZE) return;
+    u32 ldtSel = GDT_SELECTOR_LDT + pcbCount*sizeof(Descriptor);
+    PCB *pcb = &pcbs[pcbCount];
+    u32 dpl = DA_DPL3;
+    u32 rpl = SA_RPL3;
+    if (pt == sys_task){
+        dpl = DA_DPL1;
+        rpl = SA_RPL1;
+    }
+    initDescriptor(&pcb->ldt[LDT_SELECTOR_D32 >> 3], 0, 0xfffff, DA_DRW | dpl, DA_LIMIT_4K | DA_32);
+    initDescriptor(&pcb->ldt[LDT_SELECTOR_C32 >> 3], 0, 0xfffff, DA_CR | dpl, DA_LIMIT_4K | DA_32);
+    initDescriptor(&gdt[ldtSel>>3], (u32)(&pcb->ldt), sizeof(Descriptor)*LDT_SIZE - 1, DA_LDT | dpl, 0);
     pcb->priority = pcb->ticks = priority;
     pcb->ldtSel = ldtSel;
-    pcb->cs = LDT_SELECTOR_C32;
-    pcb->ss = pcb->ds = pcb->es = pcb->fs = LDT_SELECTOR_D32;
-    pcb->gs = GDT_SELECTOR_VIDEO;
-    pcb->eflags = 0x1202 ;          // IOPL=1, IF=1
+    pcb->cs = LDT_SELECTOR_C32 | rpl;
+    pcb->gs =pcb->ss = pcb->ds = pcb->es = pcb->fs = LDT_SELECTOR_D32 | rpl;
+    pcb->eflags = 0x1202 ;          // IOPL(12,13)=1, IF(9)=1
+    pcb->ptype = pt;
     pcb->entry = pcb->eip = entry;
     pcb->p_esp = (u32)(pcb->pstack+PROCESS_STACK_SIZE);
     pcb->ttyIdx = ttyIdx;
+
+    pcbCount++;
 }

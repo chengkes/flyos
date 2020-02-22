@@ -138,7 +138,6 @@ void activeTty(int idx){
 }
 
 void taskTty(){
-
     for (int i=0; i<TTY_COUNT; i++) {
         Tty* p = &tty[i];
         clearScreen(p);

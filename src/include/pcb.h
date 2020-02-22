@@ -3,6 +3,11 @@
 
 #include "types.h"
 
+typedef enum _ProcessType {
+    user_process,
+    sys_task
+} ProcessType;
+
 #define LDT_SIZE 2          // LDT 大小
 #define PROCESS_STACK_SIZE 0x8000           // 进程堆栈 大小
 // 进程控制块
@@ -35,9 +40,10 @@ typedef struct _PCB {
     char name[16];                      // 进程名称
     u8 pstack[PROCESS_STACK_SIZE];      // 进程堆栈
     u32 ttyIdx;                         // TTY索引
+    ProcessType ptype;
 } PCB ;
 
-void addPCB(u32 num, u32 entry, u32 priority,u32 ttyIdx);
+void addPCB(u32 entry, u32 priority,u32 ttyIdx, ProcessType ptype);
 void initPcb();
 PCB* getCurrentPcb();
 void schedule();

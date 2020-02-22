@@ -2,6 +2,4 @@ target remote localhost:1234
 file run/kernel.bin
 b osinit
 b exceptionHandler
-b taskTty
-b activeTty
 c
