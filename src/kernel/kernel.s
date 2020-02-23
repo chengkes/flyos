@@ -270,8 +270,8 @@ exception:
 ;; eax  功能号
 ;; ebx  第一个参数
 ;; ecx  第二个参数
-;; 第三个参数 固定为 currentPcb
-int90syscall: ; todo 
+;; 最后一个参数（第三个）固定为currentPcb
+int90syscall: ;  
     ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
     push    gs
     push    fs

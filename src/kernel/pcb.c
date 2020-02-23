@@ -51,8 +51,8 @@ void initPcb(){
     currentPcb = &pcbs[0];
     
     addPCB((u32)taskTty, 100, 0, sys_task);
-    // addPCB((u32)processB, 500, 0, user_process);
-    // addPCB((u32)processC, 200, 2, user_process);
+    addPCB((u32)processB, 500, 0, user_process);  // todo: 测试代码
+    addPCB((u32)processC, 200, 2, user_process);
     addPCB((u32)processA, 300, 1, user_process);    
 }
 
@@ -98,7 +98,7 @@ void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
     PCB *pcb = &pcbs[pcbCount];
     u32 dpl = DA_DPL3;
     u32 rpl = SA_RPL3;
-    if (pt == sys_task){
+    if (pt == sys_task){    
         dpl = DA_DPL1;
         rpl = SA_RPL1;
     }

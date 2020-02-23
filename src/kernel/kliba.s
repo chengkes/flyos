@@ -6,7 +6,7 @@ global  enableInt
 global  disableInt
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; void enableIrq(int) ; todo: 
+; void enableIrq(int) ; todo: 待实现
 enableIrq:
 
     ret
