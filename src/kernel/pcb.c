@@ -13,11 +13,11 @@ static PCB pcbs[PCB_SIZE];       // 所有进程
 static int pcbCount;
 PCB* currentPcb;        // 当前运行的进程
 
-// 测试进程A
+// 测试进程A , todo:添加READ系统调用
 static void processA(){
     char a[2] = "A";
     while(1) {
-        printf(a);
+        // printf(a);
         a[0] ++;
         if (a[0] > 'Z') a[0] = 'A';
         // delayMs(1000);

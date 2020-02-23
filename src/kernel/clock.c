@@ -33,7 +33,7 @@ static void clockHandler(){
 void initClock(){
     isInt = 0;
     ticks = 0;     
-    putIrqHandler(CLOCK_HANDLER_IDX, clockHandler);
+    putIrqHandler(IRQ_HANDLER_IDX_CLOCK, clockHandler);
 
     // 初始化时钟中断频率
     outByte(CLOCK_MODE, PORT_CLOCK_CONTROL);

@@ -21,6 +21,10 @@ void initTty() {
     }
 }
 
+void sysWrite(char* s, Color c, PCB* p) {
+    dispStr( &tty[p->ttyIdx], s, c);
+}
+
 Tty* getCurrentTty(){
     return &tty[currentTtyIdx];
 }

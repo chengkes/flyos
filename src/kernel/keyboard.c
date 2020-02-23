@@ -183,7 +183,7 @@ void initKeyboard() {
     keyBuf.count = 0;
     keyBuf.tail = keyBuf.head = keyBuf.buf;
 
-    putIrqHandler(KEYBOARD_HANDLER_IDX, keyboardHandler);
+    putIrqHandler(IRQ_HANDLER_IDX_KEYBOARD, keyboardHandler);
 }
 
 u32 keyboardRead(u32 mask){

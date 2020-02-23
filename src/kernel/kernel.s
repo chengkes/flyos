@@ -40,7 +40,8 @@ global  hwint12
 global  hwint13
 global  hwint14
 global  hwint15
-global  Handler
+
+global  int90syscall
 
 global	divide_error
 global	single_step_exception
@@ -67,6 +68,8 @@ extern isInt
 extern hwintHandlerTable
 extern osinit
 extern exceptionHandler
+extern sysWrite
+extern syscallTable
 
 _start:
     mov     esp, StackTop       ; 重新设置
@@ -199,12 +202,50 @@ hwint14:
 hwint15:
     hwint_slave 15
 
-; 中断默认处理程序, todo， 添加其他中断处理程序
-Handler:    
-    iretd
-  
+;；-----  int 90h， 系统功能调用 ---------------------------
+;; eax  功能号
+;; ebx  第一个参数
+;; ecx  第二个参数
+;; edx  第三个参数
+int90syscall: ; todo 
+    ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
+    push    gs
+    push    fs
+    push    es
+    push    ds
+    pushad
+    lea     esi , [syscallTable+eax*4]
+    ; 判断是否为中断重入     
+    inc     dword [isInt]
+    cmp     dword [isInt], 0
+    jne     .1                   ; 发生中断重入
+    ; 设置内核寄存器数据     
+    mov     esp, StackTop  ; esp 指向内核栈
+    mov     ax, ss  
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax 
+    ; 没有中断重入，进程运行时发生的中断，可以进行进程切换
+    sti    
+    push    ebx
+    push    ecx
+    push    edx
+    call    [esi]
+    add     esp, 3*4
+    cli   
+    jmp     restart
+.1:                         ; 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
+    sti    
+    push    ebx
+    push    ecx
+    push    edx
+    call    [esi]
+    add     esp, 3*4
+    cli 
+    jmp     restart_int
+
 ;；-----中断和异常 系统异常处理程序 ---------------------------
-sdivide_error:
+divide_error:
 	push	0xFFFFFFFF	; no err code
 	push	0		; vector_no	= 0
 	jmp	exception

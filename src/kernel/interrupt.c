@@ -8,9 +8,7 @@
 #define PORT_8259A_MASTER2 0x21
 #define PORT_8259A_SLAVE1 0xA0
 #define PORT_8259A_SLAVE2 0xA1
-// 外部中断对应中断号
-#define INT_VECTOR_IRQ0    0x20
-#define INT_VECTOR_IRQ8    0x28
+
 
 // IDT 大小
 #define IDT_SIZE 256
@@ -19,10 +17,10 @@ u8 idtPtr[6];
 
 // 硬件中断总个数
 #define IRQ_COUNT 16
-IrqHandler* hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序
+void* hwintHandlerTable[IRQ_COUNT];  // 硬件中断处理程序
 
-// 硬件中断默认处理程序
-static void defaultHwintHandler(){}
+#define SYS_CALL_COUNT 16
+void* syscallTable[SYS_CALL_COUNT];
 
 /// 初始化中断控制器8259A
 void init8259a(){
@@ -42,15 +40,32 @@ void init8259a(){
     outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断
 }
 
-void putIrqHandler(u8 no, IrqHandler handler){
+void putIrqHandler(u8 no, void* handler){
     hwintHandlerTable[no] = handler;
+}
+
+void putSyscall(u8 no, void* handler){
+    syscallTable[no] = handler;
 }
 
 /// 建立IDT
 void buildIdt(){
-    for (int i=0; i<IDT_SIZE; i++) {
-        initGate(&idt[i], GDT_SELECTOR_C32, (u32)Handler, DA_386IGate, 0);
-    }
+    initGate(&idt[INT_VECTOR_DIVIDE_ERROR         ], GDT_SELECTOR_C32, (u32)divide_error          , DA_386IGate, 0);              
+    initGate(&idt[INT_VECTOR_SINGLE_STEP_EXCEPTION], GDT_SELECTOR_C32, (u32)single_step_exception , DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_NMI                  ], GDT_SELECTOR_C32, (u32)nmi                   , DA_386IGate, 0);              
+    initGate(&idt[INT_VECTOR_BREAKPOINT_EXCEPTION ], GDT_SELECTOR_C32, (u32)breakpoint_exception  , DA_386IGate, 0);      
+    initGate(&idt[INT_VECTOR_OVERFLOW             ], GDT_SELECTOR_C32, (u32)overflow              , DA_386IGate, 0);          
+    initGate(&idt[INT_VECTOR_BOUNDS_CHECK         ], GDT_SELECTOR_C32, (u32)bounds_check          , DA_386IGate, 0);          
+    initGate(&idt[INT_VECTOR_INVAL_OPCODE         ], GDT_SELECTOR_C32, (u32)inval_opcode          , DA_386IGate, 0);                  
+    initGate(&idt[INT_VECTOR_COPR_NOT_AVAILABLE   ], GDT_SELECTOR_C32, (u32)copr_not_available    , DA_386IGate, 0);          
+    initGate(&idt[INT_VECTOR_DOUBLE_FAULT         ], GDT_SELECTOR_C32, (u32)double_fault          , DA_386IGate, 0);              
+    initGate(&idt[INT_VECTOR_COPR_SEG_OVERRUN     ], GDT_SELECTOR_C32, (u32)copr_seg_overrun      , DA_386IGate, 0);      
+    initGate(&idt[INT_VECTOR_INVAL_TSS            ], GDT_SELECTOR_C32, (u32)inval_tss             , DA_386IGate, 0);                  
+    initGate(&idt[INT_VECTOR_SEGMENT_NOT_PRESENT  ], GDT_SELECTOR_C32, (u32)segment_not_present   , DA_386IGate, 0);      
+    initGate(&idt[INT_VECTOR_STACK_EXCEPTION      ], GDT_SELECTOR_C32, (u32)stack_exception       , DA_386IGate, 0);      
+    initGate(&idt[INT_VECTOR_GENERAL_PROTECTION   ], GDT_SELECTOR_C32, (u32)general_protection    , DA_386IGate, 0);  
+    initGate(&idt[INT_VECTOR_PAGE_FAULT           ], GDT_SELECTOR_C32, (u32)page_fault            , DA_386IGate, 0);                  
+    initGate(&idt[INT_VECTOR_COPR_ERROR           ], GDT_SELECTOR_C32, (u32)copr_error            , DA_386IGate, 0);              
 
     initGate(&idt[INT_VECTOR_IRQ0+0], GDT_SELECTOR_C32, (u32)hwint00, DA_386IGate, 0);
     initGate(&idt[INT_VECTOR_IRQ0+1], GDT_SELECTOR_C32, (u32)hwint01, DA_386IGate, 0);
@@ -69,9 +84,7 @@ void buildIdt(){
     initGate(&idt[INT_VECTOR_IRQ8+6], GDT_SELECTOR_C32, (u32)hwint14, DA_386IGate, 0);
     initGate(&idt[INT_VECTOR_IRQ8+7], GDT_SELECTOR_C32, (u32)hwint15, DA_386IGate, 0);
 
-    for (int i=2 ;i<IRQ_COUNT; i++) {
-        hwintHandlerTable[i] = defaultHwintHandler;
-    }
+    initGate(&idt[INT_VECTOR_SYSCALL], GDT_SELECTOR_C32, (u32)int90syscall, DA_386IGate, 0);
 
     *((u16*)idtPtr) = (u16)(sizeof(idt)-1);
     *((u32*)(idtPtr+2))= (u32)&idt;

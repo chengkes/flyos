@@ -6,8 +6,6 @@ typedef unsigned int   u32;
 typedef unsigned short u16;
 typedef unsigned char  u8;
 
-typedef void IrqHandler(void);
-
 // 描述符
 typedef struct _Descriptor {
     u16  	limit;	    // 段界限1
