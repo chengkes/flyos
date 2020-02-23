@@ -6,6 +6,12 @@ global  enableInt
 global  disableInt
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; void enableIrq(int) ; todo: 
+enableIrq:
+
+    ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; void enableInt()
 enableInt:
     sti

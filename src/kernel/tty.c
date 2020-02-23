@@ -9,6 +9,10 @@
 static Tty tty[TTY_COUNT];
 static volatile int currentTtyIdx;
 
+static void sysWrite(char* s, Color c, PCB* p) {
+    dispStr( &tty[p->ttyIdx], s, c);
+}
+
 void initTty() {
     currentTtyIdx = 0;
     u32 addr = 0; 
@@ -19,20 +23,12 @@ void initTty() {
         p->limit = 2*MAX_COLS*MAX_ROWS;     
         addr += p->limit;
     }
-}
 
-void sysWrite(char* s, Color c, PCB* p) {
-    dispStr( &tty[p->ttyIdx], s, c);
+    putSyscall(SYSCALL_IDX_WRITE, sysWrite);
 }
 
 Tty* getCurrentTty(){
     return &tty[currentTtyIdx];
-}
-
-void printf(char* fmt) {
-    PCB* pcb = getCurrentPcb();
-    Tty* t = & tty[pcb->ttyIdx];
-    dispStr(t, fmt, t->defaultColor);
 }
 
 void clearScreen(Tty* t ){

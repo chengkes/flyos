@@ -44,7 +44,7 @@ typedef struct _Tty {
 
 void initTty();
 void taskTty();
-void printf(char* fmt) ;
+void printf(char* s, Color c);
 void outChar(Tty*, char ,Color);
 void clearScreen(Tty* );
 void setCursorPos(Tty* );

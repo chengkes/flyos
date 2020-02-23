@@ -4,12 +4,6 @@
 
 #include "types.h"
 
-// 外部中断对应中断号
-#define INT_VECTOR_IRQ0    0x20
-#define INT_VECTOR_IRQ8    0x28
-// 系统调研中断号
-#define INT_VECTOR_SYSCALL  0x90       
-
 // 异常对应中断号
 #define INT_VECTOR_DIVIDE_ERROR           0x00
 #define INT_VECTOR_SINGLE_STEP_EXCEPTION  0x01
@@ -28,6 +22,15 @@
 #define INT_VECTOR_PAGE_FAULT             0x0E
 #define INT_VECTOR_COPR_ERROR             0x10
 
+// 系统调研中断号
+#define INT_VECTOR_SYSCALL  0x90   
+
+#define SYSCALL_IDX_WRITE      0
+
+// 外部中断对应中断号
+#define INT_VECTOR_IRQ0    0x20
+#define INT_VECTOR_IRQ8    0x28
+
 #define IRQ_HANDLER_IDX_CLOCK     0
 #define IRQ_HANDLER_IDX_KEYBOARD  1
 
@@ -37,6 +40,7 @@ void init8259a();
 void buildIdt();
 
 // ----- 来自汇编的函数声明 --------------------
+void enableIrq(int);
 void enableInt();
 void disableInt();
 

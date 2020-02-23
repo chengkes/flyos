@@ -9,9 +9,8 @@
 #define PORT_8259A_SLAVE1 0xA0
 #define PORT_8259A_SLAVE2 0xA1
 
-
 // IDT 大小
-#define IDT_SIZE 256
+#define IDT_SIZE 0xff
 static Gate idt[IDT_SIZE];
 u8 idtPtr[6];
 
@@ -36,7 +35,7 @@ void init8259a(){
     outByte(0x01, PORT_8259A_MASTER2);     // 写ICW4
     outByte(0x01, PORT_8259A_SLAVE2);
 
-    outByte(0x0fc, PORT_8259A_MASTER2);     // 写OCW1, 主片打开时钟中断、键盘终端
+    outByte(0x0fc, PORT_8259A_MASTER2);     // 写OCW1, 主片屏蔽所有中断
     outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断
 }
 
@@ -84,7 +83,7 @@ void buildIdt(){
     initGate(&idt[INT_VECTOR_IRQ8+6], GDT_SELECTOR_C32, (u32)hwint14, DA_386IGate, 0);
     initGate(&idt[INT_VECTOR_IRQ8+7], GDT_SELECTOR_C32, (u32)hwint15, DA_386IGate, 0);
 
-    initGate(&idt[INT_VECTOR_SYSCALL], GDT_SELECTOR_C32, (u32)int90syscall, DA_386IGate, 0);
+    initGate(&idt[INT_VECTOR_SYSCALL], GDT_SELECTOR_C32, (u32)int90syscall, DA_386IGate | DA_DPL3, 0);
 
     *((u16*)idtPtr) = (u16)(sizeof(idt)-1);
     *((u32*)(idtPtr+2))= (u32)&idt;

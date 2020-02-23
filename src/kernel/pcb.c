@@ -17,10 +17,10 @@ PCB* currentPcb;        // 当前运行的进程
 static void processA(){
     char a[2] = "A";
     while(1) {
-        // printf(a);
+        printf(a, cyan);
         a[0] ++;
         if (a[0] > 'Z') a[0] = 'A';
-        // delayMs(1000);
+        delayMs(1000);
     }
 }
 
@@ -28,7 +28,7 @@ static void processA(){
 static void processB(){
     char a[2] = "a";
     while(1) {
-        printf(a);
+        printf(a, blue);
         a[0] ++;
         if (a[0] > 'z') a[0] = 'a';
         delayMs(1000);
@@ -39,7 +39,7 @@ static void processB(){
 static void processC(){
     char a[2] = "0";
     while(1) {
-        printf(a);
+        printf(a, green);
         a[0] ++;
         if (a[0] > '9') a[0] = '0';
         delayMs(1000);
@@ -51,9 +51,9 @@ void initPcb(){
     currentPcb = &pcbs[0];
     
     addPCB((u32)taskTty, 100, 0, sys_task);
-    // addPCB((u32)processB, 500, 0, sys_task);
-    // addPCB((u32)processC, 200, 0, sys_task);
-    addPCB((u32)processA, 300, 0, user_process);    
+    // addPCB((u32)processB, 500, 0, user_process);
+    // addPCB((u32)processC, 200, 2, user_process);
+    addPCB((u32)processA, 300, 1, user_process);    
 }
 
 PCB* getCurrentPcb(){

@@ -19,7 +19,7 @@ typedef struct _PCB {
     u32 ebx;
     u32 edx;
     u32 ecx;
-    u32 eax;
+    u32 eax;    // 第7个
 
     u32 ds;
     u32 es;

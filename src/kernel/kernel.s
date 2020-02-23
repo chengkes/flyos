@@ -16,6 +16,7 @@ PORT_8259A_SLAVE1    equ   0A0h
 ; 与klibc.c 中 PCB结构 中变量位置保持一致
 PCB_LDT_SEL   equ   17*4  
 PCB_REGS_END  equ   PCB_LDT_SEL
+PCB_EAX       equ   7*4
 
 ; 与klibc.c 中 TSS结构 中变量位置保持一致
 TSS_ESP0      equ   1*4
@@ -41,8 +42,6 @@ global  hwint13
 global  hwint14
 global  hwint15
 
-global  int90syscall
-
 global	divide_error
 global	single_step_exception
 global	nmi
@@ -59,6 +58,9 @@ global	stack_exception
 global	general_protection
 global	page_fault
 global	copr_error
+
+global  int90syscall
+global  printf
 
 extern gdtPtr
 extern idtPtr
@@ -80,9 +82,7 @@ _start:
     lidt    [idtPtr]
     mov     ax, GDT_SELECTOR_TSS                
     ltr     ax
-    
     jmp     GDT_SELECTOR_C32: restart  ; 测试GDT是否正确
-
 restart:    ; 进入低特权级，执行进程 
     mov     esp, [currentPcb]           ; 指向即将运行的进程PCB开始处，即寄存器数据开始处
     lldt    [esp + PCB_LDT_SEL]
@@ -96,11 +96,11 @@ restart_int:
     pop     fs
     pop     gs  
     iretd
-
-.wait:
+.wait:  
     hlt
     jmp     .wait  
-  
+
+
 ;---------------------------------------------------------
 ;；----- 8059A 硬件中断处理程序 ---------------------------
 %macro hwint_master 1 
@@ -202,48 +202,6 @@ hwint14:
 hwint15:
     hwint_slave 15
 
-;；-----  int 90h， 系统功能调用 ---------------------------
-;; eax  功能号
-;; ebx  第一个参数
-;; ecx  第二个参数
-;; edx  第三个参数
-int90syscall: ; todo 
-    ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
-    push    gs
-    push    fs
-    push    es
-    push    ds
-    pushad
-    lea     esi , [syscallTable+eax*4]
-    ; 判断是否为中断重入     
-    inc     dword [isInt]
-    cmp     dword [isInt], 0
-    jne     .1                   ; 发生中断重入
-    ; 设置内核寄存器数据     
-    mov     esp, StackTop  ; esp 指向内核栈
-    mov     ax, ss  
-    mov     ds, ax
-    mov     es, ax
-    mov     fs, ax 
-    ; 没有中断重入，进程运行时发生的中断，可以进行进程切换
-    sti    
-    push    ebx
-    push    ecx
-    push    edx
-    call    [esi]
-    add     esp, 3*4
-    cli   
-    jmp     restart
-.1:                         ; 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
-    sti    
-    push    ebx
-    push    ecx
-    push    edx
-    call    [esi]
-    add     esp, 3*4
-    cli 
-    jmp     restart_int
-
 ;；-----中断和异常 系统异常处理程序 ---------------------------
 divide_error:
 	push	0xFFFFFFFF	; no err code
@@ -303,8 +261,64 @@ copr_error:
 	push	0xFFFFFFFF	; no err code
 	push	16		; vector_no	= 10h
 	jmp	exception
-
 exception:
 	call	exceptionHandler
 	add	esp, 4*2	; 让栈顶指向 EIP，堆栈中从顶向下依次是：EIP、CS、EFLAGS
 	iret
+
+;；-----  int 90h， 系统功能调用 ---------------------------
+;; eax  功能号
+;; ebx  第一个参数
+;; ecx  第二个参数
+;; 第三个参数 固定为 currentPcb
+int90syscall: ; todo 
+    ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
+    push    gs
+    push    fs
+    push    es
+    push    ds
+    pushad
+    lea     esi , [syscallTable+eax*4]
+    ; 判断是否为中断重入     
+    inc     dword [isInt]
+    cmp     dword [isInt], 0   ; isInt!=0, 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
+    jne     .1                  
+    ; 设置内核寄存器数据     
+    mov     esp, StackTop  ; esp 指向内核栈
+    mov     ax, ss  
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax 
+.1:                         
+    sti    
+    push    dword [currentPcb]
+    push    ecx
+    push    ebx
+    call    [esi]
+    mov     [currentPcb + PCB_EAX], eax     ; 讲返回值放入PCB的eax中
+    add     esp, 3*4
+    cli 
+    cmp     dword [isInt], 0  
+    jne     restart_int 
+    jmp     restart
+
+;;; ---------  系统调研功能的实现  ------------------------
+
+INT_VECTOR_SYSCALL  equ     90h
+SYSCALL_IDX_WRITE   equ     0
+;;---------- tty.h -----------------------------------
+; void printf(char* s, Color c);
+printf:
+    push    eax
+    push    ebx
+    push    ecx
+    push    edx
+    mov     eax, SYSCALL_IDX_WRITE
+    mov     ebx, [esp+16+4]  ; String
+    mov     ecx, [esp+16+8]  ; Color
+    int     INT_VECTOR_SYSCALL         ; 调用 void sysWrite(char* s, Color c, PCB* p)
+    pop     edx
+    pop     ecx
+    pop     ebx
+    pop     eax
+    ret
