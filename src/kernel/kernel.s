@@ -100,10 +100,9 @@ restart_int:
     hlt
     jmp     .wait  
 
-
 ;---------------------------------------------------------
 ;；----- 8059A 硬件中断处理程序 ---------------------------
-%macro hwint_master 1 
+%macro hwint_8059A 2 
     ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
     push    gs
     push    fs
@@ -112,95 +111,42 @@ restart_int:
     pushad
     ; SEND EOI 
     mov     al, EOI
-    out     PORT_8259A_MASTER1, al 
-    mov     ebx, hwintHandlerTable+4*%1
+    out     %2, al 
     ; 判断是否为中断重入     
     inc     dword [isInt]
-    cmp     dword [isInt], 0
-    jne     .1                   ; 发生中断重入
+    cmp     dword [isInt], 0    ; isInt!=0,发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
+    jne     .1                  ; isInt==0,没有中断重入，进程运行时发生的中断，可以进行进程切换
     ; 设置内核寄存器数据     
     mov     esp, StackTop  ; esp 指向内核栈
     mov     ax, ss  
     mov     ds, ax
     mov     es, ax
     mov     fs, ax 
-    ; 没有中断重入，进程运行时发生的中断，可以进行进程切换
+.1:                         
     sti    
-    call    [ebx]
-    cli   
-    jmp     restart
-.1:                         ; 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
-    sti    
-    call    [ebx]
+    call    [hwintHandlerTable+4*%1]
     cli 
-    jmp     restart_int
-%endmacro  
-%macro hwint_slave 1 
-    ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
-    push    gs
-    push    fs
-    push    es
-    push    ds
-    pushad
-    ; SEND EOI 
-    mov     al, EOI
-    out     PORT_8259A_SLAVE1, al 
-    mov     ebx, hwintHandlerTable+4*%1
-    ; 判断是否为中断重入     
-    inc     dword [isInt]
     cmp     dword [isInt], 0
-    jne     .1                   ; 发生中断重入
-    ; 设置内核寄存器数据     
-    mov     esp, StackTop  ; esp 指向内核栈
-    mov     ax, ss  
-    mov     ds, ax
-    mov     es, ax
-    mov     fs, ax 
-    ; 没有中断重入，进程运行时发生的中断，可以进行进程切换
-    sti    
-    call    [ebx]
-    cli   
+    jne     restart_int              
     jmp     restart
-.1:                         ; 发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
-    sti    
-    call    [ebx]
-    cli 
-    jmp     restart_int
 %endmacro  
 
-hwint00:
-    hwint_master 0
-hwint01:
-    hwint_master 1
-hwint02:
-    hwint_master 2
-hwint03:
-    hwint_master 3
-hwint04:
-    hwint_master 4
-hwint05:
-    hwint_master 5
-hwint06:
-    hwint_master 6
-hwint07:
-    hwint_master 7
-
-hwint08:
-    hwint_slave 08 
-hwint09:
-    hwint_slave 09 
-hwint10:
-    hwint_slave 10 
-hwint11:
-    hwint_slave 11
-hwint12:
-    hwint_slave 12
-hwint13:
-    hwint_slave 13
-hwint14:
-    hwint_slave 14
-hwint15:
-    hwint_slave 15
+hwint00:    hwint_8059A 0, PORT_8259A_MASTER1
+hwint01:    hwint_8059A 1, PORT_8259A_MASTER1
+hwint02:    hwint_8059A 2, PORT_8259A_MASTER1
+hwint03:    hwint_8059A 3, PORT_8259A_MASTER1
+hwint04:    hwint_8059A 4, PORT_8259A_MASTER1
+hwint05:    hwint_8059A 5, PORT_8259A_MASTER1
+hwint06:    hwint_8059A 6, PORT_8259A_MASTER1
+hwint07:    hwint_8059A 7, PORT_8259A_MASTER1
+hwint08:    hwint_8059A 08, PORT_8259A_SLAVE1
+hwint09:    hwint_8059A 09, PORT_8259A_SLAVE1 
+hwint10:    hwint_8059A 10, PORT_8259A_SLAVE1 
+hwint11:    hwint_8059A 11, PORT_8259A_SLAVE1
+hwint12:    hwint_8059A 12, PORT_8259A_SLAVE1
+hwint13:    hwint_8059A 13, PORT_8259A_SLAVE1
+hwint14:    hwint_8059A 14, PORT_8259A_SLAVE1
+hwint15:    hwint_8059A 15, PORT_8259A_SLAVE1
 
 ;；-----中断和异常 系统异常处理程序 ---------------------------
 divide_error:
@@ -263,7 +209,7 @@ copr_error:
 	jmp	exception
 exception:
 	call	exceptionHandler
-	add	esp, 4*2	; 让栈顶指向 EIP，堆栈中从顶向下依次是：EIP、CS、EFLAGS
+	add	    esp, 4*2	; 让栈顶指向 EIP，堆栈中从顶向下依次是：EIP、CS、EFLAGS
 	iret
 
 ;；-----  int 90h， 系统功能调用 ---------------------------
@@ -312,12 +258,10 @@ printf:
     push    eax
     push    ebx
     push    ecx
-    push    edx
     mov     eax, SYSCALL_IDX_WRITE
-    mov     ebx, [esp+16+4]  ; String
-    mov     ecx, [esp+16+8]  ; Color
+    mov     ebx, [esp+12+4]  ; String
+    mov     ecx, [esp+12+8]  ; Color
     int     INT_VECTOR_SYSCALL         ; 调用 void sysWrite(char* s, Color c, PCB* p)
-    pop     edx
     pop     ecx
     pop     ebx
     pop     eax
