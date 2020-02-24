@@ -21,6 +21,7 @@ void initTty() {
         p->currentAddr = p->startAddr = addr;
         p->defaultColor = white;
         p->limit = 2*MAX_COLS*MAX_ROWS;     
+        p->inputBufCount = p->inputBufHead = p->inputBufTail = 0;
         addr += p->limit;
     }
 
@@ -137,6 +138,27 @@ void activeTty(int idx){
     setCursorPos(&tty[currentTtyIdx]);
 }
 
+void putKey2Tty(Tty* t,u32 key){
+    if (t->inputBufCount < TTY_INPUT_BUF_SIZE) {
+        t->inputBuf[t->inputBufHead++] = key;
+        ++(t->inputBufCount);
+        if (t->inputBufHead >= TTY_INPUT_BUF_SIZE) {
+            t->inputBufHead = 0;
+        }
+    }
+}
+
+u32 readKey(){
+    Tty * t = &tty[getCurrentPcb()->ttyIdx];
+    while (t->inputBufCount <=0) ;
+    u32 key = t->inputBuf[t->inputBufTail++];
+    (t->inputBufCount) --;
+    if (t->inputBufTail >= TTY_INPUT_BUF_SIZE) {
+        t->inputBufTail = 0;
+    }
+    return key;
+}
+
 void taskTty(){
     for (int i=0; i<TTY_COUNT; i++) {
         Tty* p = &tty[i];
@@ -150,6 +172,8 @@ void taskTty(){
         u32 key =keyboardRead(0);
         if ( key == DOWN) {
             activeTty(currentTtyIdx + 1);
+        }else {
+            putKey2Tty(getCurrentTty(), key);
         }
         // if (!(key& KEYBOARD_FLAG_EXT)) {  // 是否为可打印字符
         //     outChar(getCurrentTty(), key & 0x7f, 0x01);

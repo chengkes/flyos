@@ -35,7 +35,7 @@ run/os.img:run/boot.bin run/loader.bin run/kernel.bin run/kernel.bin.asm
 	sudo mount $@ /mnt/floppy -o loop
 	sudo cp run/loader.bin /mnt/floppy
 	sudo cp run/kernel.bin /mnt/floppy
-	sudo umount /mnt/floppys
+	sudo umount /mnt/floppy
 
 clean:
 	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm $(S_OBJ) $(C_OBJ) 

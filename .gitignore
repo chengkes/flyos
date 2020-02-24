@@ -63,4 +63,4 @@ src/run/test
 src/test/*
 src/run/kernel.bin.asm
 src/.vscode/settings.json
-src/run/.fuse_hidden000002b800000001
+src/run/.fuse_hidden*

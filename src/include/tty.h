@@ -17,6 +17,7 @@ typedef enum _Color{
 	gray = 0x08
 } Color;
 
+#define TTY_INPUT_BUF_SIZE 128
 typedef struct _Tty {
 	u32 currentAddr;
 	u32 startAddr;
@@ -24,6 +25,10 @@ typedef struct _Tty {
 	int cursorRow;
 	int cursorCol;
 	Color defaultColor;
+	// TTY输入缓冲区
+	u32 inputBuf[TTY_INPUT_BUF_SIZE];
+	volatile int inputBufCount;
+	u32 inputBufHead, inputBufTail;
 } Tty;
 
 // 显示器端口
@@ -45,11 +50,12 @@ typedef struct _Tty {
 void initTty();
 void taskTty();
 void printf(char* s, Color c);
-void outChar(Tty*, char ,Color);
-void clearScreen(Tty* );
+// void outChar(Tty*, char ,Color);
+// void clearScreen(Tty* );
 void setCursorPos(Tty* );
-void dispInt(Tty* t, u32, Color);
+// void dispInt(Tty* t, u32, Color);
 void dispStr(Tty* , char*, Color);
 void scrollUp(Tty* ) ;
+u32 readKey();
 
 #endif

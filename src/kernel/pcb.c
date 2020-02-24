@@ -18,10 +18,12 @@ PCB* currentPcb;        // 当前运行的进程
 static void processA(){
     char a[2] = "A";
     while(1) {
-        printf(a, cyan);
-        a[0] ++;
-        if (a[0] > 'Z') a[0] = 'A';
-        delayMs(1000);
+        u32 key = readKey();
+        if (key!=0 && (key& KEYBOARD_FLAG_EXT)==0) {  // 可打印字符 
+            a[0] = 0x7f & key;
+            printf(a, cyan);
+        }
+        // delayMs(1000);
     }
 }
 
@@ -51,10 +53,10 @@ void initPcb(){
     pcbCount = 0;
     currentPcb = &pcbs[0];
     
-    addPCB((u32)taskTty, 100, 0, sys_task);
-    addPCB((u32)processB, 500, 1, user_process);  // todo: 测试代码
-    addPCB((u32)processC, 200, 2, user_process);
-    addPCB((u32)processA, 300, 0, user_process);    
+    addPCB((u32)taskTty, 1, 0, sys_task);
+    addPCB((u32)processB, 5, 1, user_process);  // todo: 测试代码
+    addPCB((u32)processC, 2, 2, user_process);
+    addPCB((u32)processA, 3, 0, user_process);    
 }
 
 PCB* getCurrentPcb(){
