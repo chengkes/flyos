@@ -1,6 +1,4 @@
 target remote localhost:1234
 file run/kernel.bin
 b exceptionHandler
-b clockHandler
-b sysWrite
 c

@@ -2,6 +2,7 @@
 #include "types.h"
 #include "tty.h"
 #include "pcb.h"
+#include "keyboard.h"
 #include "main.h"
 
 // LDT中 选择子
@@ -51,9 +52,9 @@ void initPcb(){
     currentPcb = &pcbs[0];
     
     addPCB((u32)taskTty, 100, 0, sys_task);
-    addPCB((u32)processB, 500, 0, user_process);  // todo: 测试代码
+    addPCB((u32)processB, 500, 1, user_process);  // todo: 测试代码
     addPCB((u32)processC, 200, 2, user_process);
-    addPCB((u32)processA, 300, 1, user_process);    
+    addPCB((u32)processA, 300, 0, user_process);    
 }
 
 PCB* getCurrentPcb(){

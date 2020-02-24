@@ -12,6 +12,8 @@ C_OBJ= $(patsubst %.c, %.o, $(C_SRC))
 S_SRC= $(shell find . -name *.s)
 S_OBJ= $(patsubst %.s, %.o, $(S_SRC))
 
+img:run/os.img
+
 .s.o: 
 	$(AS) $(ASFLAGS) $< -o $@
 .c.o:
@@ -33,12 +35,10 @@ run/os.img:run/boot.bin run/loader.bin run/kernel.bin run/kernel.bin.asm
 	sudo mount $@ /mnt/floppy -o loop
 	sudo cp run/loader.bin /mnt/floppy
 	sudo cp run/kernel.bin /mnt/floppy
-	sudo umount /mnt/floppy
+	sudo umount /mnt/floppys
 
 clean:
 	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm $(S_OBJ) $(C_OBJ) 
-
-img:run/os.img
 
 qemu:run/os.img
 	qemu-system-i386 -fda run/os.img -boot a
@@ -46,7 +46,6 @@ debug:run/os.img
 	qemu-system-i386 -S -s -fda run/os.img -boot a &
 	sleep 1
 	cgdb --command=run/gdbcmd.txt
-
 run:run/os.img     
 	bochs -q -f run/bochsrc -rc run/debug.txt
 runwin:run/os.img   # for windows

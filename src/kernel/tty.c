@@ -148,11 +148,14 @@ void taskTty(){
 
     while(1) {
         u32 key =keyboardRead(0);
-        if (!(key& KEYBOARD_FLAG_EXT)) {  // 是否为可打印字符
-            outChar(getCurrentTty(), key & 0x7f, 0x01);
-        } else {
-            if ( key == DOWN) {
-                activeTty(currentTtyIdx +1);
+        if ( key == DOWN) {
+            activeTty(currentTtyIdx + 1);
+        }
+        // if (!(key& KEYBOARD_FLAG_EXT)) {  // 是否为可打印字符
+        //     outChar(getCurrentTty(), key & 0x7f, 0x01);
+        // } else {
+            // if ( key == DOWN) {
+            //     activeTty(currentTtyIdx +1);
             // }else if (key == UP) {
             //     activeTty(currentTtyIdx -1);
             // }else if (key == LEFT) {
@@ -163,9 +166,9 @@ void taskTty(){
             //     outChar(getCurrentTty(), '\n', white);
             // }else if (key ==TAB) {
             //     dispStr(getCurrentTty(), "    ", white);
-            }else {
-                dispInt(getCurrentTty(), key, red);  // todo, 测试代码
-            }
-        }
+            // }else {
+            //     dispInt(getCurrentTty(), key, red);  // todo, 测试代码
+            // }
+        // }
     }
 }
