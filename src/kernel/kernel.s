@@ -60,7 +60,7 @@ global	page_fault
 global	copr_error
 
 global  int90syscall
-global  printf
+global  write
 
 extern gdtPtr
 extern idtPtr
@@ -139,6 +139,7 @@ hwint04:    hwint_8059A 4, PORT_8259A_MASTER1
 hwint05:    hwint_8059A 5, PORT_8259A_MASTER1
 hwint06:    hwint_8059A 6, PORT_8259A_MASTER1
 hwint07:    hwint_8059A 7, PORT_8259A_MASTER1
+
 hwint08:    hwint_8059A 08, PORT_8259A_SLAVE1
 hwint09:    hwint_8059A 09, PORT_8259A_SLAVE1 
 hwint10:    hwint_8059A 10, PORT_8259A_SLAVE1 
@@ -253,8 +254,8 @@ int90syscall: ;
 INT_VECTOR_SYSCALL  equ     90h
 SYSCALL_IDX_WRITE   equ     0
 ;;---------- tty.h -----------------------------------
-; void printf(char* s, Color c);
-printf:
+; void write(char* s, Color c);
+write:
     push    eax
     push    ebx
     push    ecx

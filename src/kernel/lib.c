@@ -9,20 +9,27 @@ void memSet(u8* to, u8 val, u32 size){
     for(int i=0;i<size; i++) to[i] = val;
 }
 
-// 整数转换为16进制字符串
-void itos(u32 a, char* p){
-    u8 preZero = 1;
-    for (int i=0;i<8; i++) {
-        char w = (a>>(28-i*4)) & 0x0f;
-        if (w>=10) {
-            *(p++) = w +'A' - 10;
-            preZero = 0;
-        } else if(w==0 && preZero){
-            continue;
+// 整数转换为base进制字符串
+void itos(u32 a, u32 base, char* p){
+    char b[32]="";
+    int w = 0;
+
+    while (a>0) {
+        b[w] = a%base;
+        if (b[w] >=10 ) {
+            b[w] += 'A' - 10;
         }else {
-            *(p++) = w +'0';
-            preZero = 0;
+            b[w] += '0';
         }
+        a /= base;
+        w++;
     }
+
+    *p++ = '0';
+    while (w >=0) {
+        *p++ = b[--w];
+    }    
     *p = 0;
 }
+
+

@@ -92,3 +92,11 @@ void buildIdt(){
 void exceptionHandler(int vec_no, int err_code, int eip, int cs, int eflags) {
     
 }
+
+void enableInt(){
+    asm volatile("sti");
+}
+
+void disableInt(){
+    asm volatile("cli");
+}

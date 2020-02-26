@@ -39,10 +39,11 @@ void putSyscall(u8 no, void* handler);
 void init8259a();
 void buildIdt();
 
-// ----- 来自汇编的函数声明 --------------------
-void enableIrq(int);
 void enableInt();
 void disableInt();
+
+// ----- 来自汇编的函数声明 --------------------
+void enableIrq(int);
 
 void hwint00();
 void hwint01();

@@ -4,7 +4,7 @@
 
 #include "types.h"
 
-void itos(u32 a, char* p);
+void itos(u32 a, u32 base, char* p);
 void memSet(u8* to, u8 val, u32 size);
 void memCpy(u8* to, u8* from, u32 size);
 

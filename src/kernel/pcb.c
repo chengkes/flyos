@@ -4,12 +4,13 @@
 #include "pcb.h"
 #include "keyboard.h"
 #include "main.h"
+#include "clock.h"
+#include "lib.h"
 
 // LDT中 选择子
 #define LDT_SELECTOR_D32        (0x00 | SA_TIL )   // 数据段 选择子
 #define LDT_SELECTOR_C32        (0x08 | SA_TIL )   // 代码段 选择子
 
-#define PCB_SIZE 128             // 进程控制块 大小
 static PCB pcbs[PCB_SIZE];       // 所有进程
 static int pcbCount;
 PCB* currentPcb;        // 当前运行的进程
@@ -17,21 +18,48 @@ PCB* currentPcb;        // 当前运行的进程
 // 测试进程A , todo:添加READ系统调用
 static void processA(){
     char a[2] = "A";
+    write(__FILE__, white);
+    write("\n", white);
+    write(__BASE_FILE__, white);
+    write("\n", white);
+    char b[16] = "";
+    itos(__LINE__, 16, b);  
+    write(b, white);
+
     while(1) {
         u32 key = readKey();
+       
         if (key!=0 && (key& KEYBOARD_FLAG_EXT)==0) {  // 可打印字符 
             a[0] = 0x7f & key;
-            printf(a, cyan);
+            write(a, cyan);
         }
         // delayMs(1000);
     }
+}
+
+static void sysTask() {
+    // Message msg;
+    // PCB* p = getCurrentPcb();
+    // // u32 selfPcbId = getPcbId(p);
+    // while(1) {
+    //     receiveMsg(&msg);
+    //     u32 src = msg.source;
+
+    //     if (msg.type == IPC_MSG_GET_TICKS) {
+    //         msg.source = getPcbId();
+    //         msg.dest = src;
+    //         msg.retValue = getTicks();
+    //         sendMsg(&msg);
+    //     } 
+        
+    // }
 }
 
 // 测试进程B
 static void processB(){
     char a[2] = "a";
     while(1) {
-        printf(a, blue);
+        write(a, blue);
         a[0] ++;
         if (a[0] > 'z') a[0] = 'a';
         delayMs(1000);
@@ -42,7 +70,7 @@ static void processB(){
 static void processC(){
     char a[2] = "0";
     while(1) {
-        printf(a, green);
+        write(a, green);
         a[0] ++;
         if (a[0] > '9') a[0] = '0';
         delayMs(1000);
@@ -63,6 +91,10 @@ PCB* getCurrentPcb(){
     return currentPcb;
 }
 
+// u32 getPcbId(PCB* p) {
+//     return p->ldtSel;
+// }
+
 // 进程调度算法
 void schedule(){
     // ---------- 循环调用 ---------------
@@ -70,21 +102,21 @@ void schedule(){
     // if (currentPcb >= pcbs + PCB_SIZE)  currentPcb=pcbs;
 
     // ---------- 优先级调度 ---------------
-    if(currentPcb->ticks > 0) {
+    // currentPcb->state != 0 表示进程被阻塞  
+    if(currentPcb->ticks > 0 && currentPcb->state == 0) { // 当前进程时钟周期（ticks）未用完，继续运行
         return;
     }
     int maxTicks = 0;
-    for (int i=0;i<pcbCount; i++) {
-        if (pcbs[i].ticks > maxTicks) {
-            maxTicks = pcbs[i].ticks;
-            currentPcb = & pcbs[i];
+    while (maxTicks == 0) {
+        for (int i = 0; i < pcbCount; i++) { // 选择剩余ticks最大的进程
+            if (pcbs[i].ticks > maxTicks && currentPcb->state == 0) {
+                maxTicks = pcbs[i].ticks;
+                currentPcb = &pcbs[i];
+            }
         }
-    }
-    if (maxTicks == 0){
-        for (int i=0;i<pcbCount; i++) {
-            pcbs[i].ticks = pcbs[i].priority;
-            if (pcbs[i].priority > currentPcb->priority) {
-                currentPcb = & pcbs[i];
+        if (maxTicks == 0){  // 所有进程ticks都用完，重置ticks为优先级（priority),继续调度
+            for (int i=0;i<pcbCount; i++) {
+                pcbs[i].ticks = pcbs[i].priority;               
             }
         }
     }

@@ -85,7 +85,7 @@ void dispStr(Tty* t, char* p, Color color){
 // 显示整数
 void dispInt(Tty* t, u32 a, Color color){
     char b[9]="";
-    itos(a, b);
+    itos(a, 16, b);
     dispStr(t, b, color);
 }
 
@@ -166,8 +166,7 @@ void taskTty(){
         dispStr(p, "TTY-", white);
         dispInt(p, i+1, red);
         outChar(p, '#', red);
-    }
-
+    } 
     while(1) {
         u32 key =keyboardRead(0);
         if ( key == DOWN) {
@@ -195,4 +194,35 @@ void taskTty(){
             // }
         // }
     }
+}
+
+
+void printf(char *s, ...) {
+    char buf[512];
+    char*p = buf;
+    
+    u32 addr = s + 4;
+
+    while (*s) {
+        if (*s == '%') {
+            ++s;
+            if (*s == 'x') {  // 以16进制显示整数
+
+            }else if (*s == 'd'){ // 以10进制显示整数
+
+            }else if (*s == 'b'){ // 以2进制显示整数
+
+            } else if (*s == 's'){ // 显示字符串
+
+            } else if (*s == 'c'){ // 显示字符
+
+            }  else if (*s == '%'){ // 显示特殊符号 ‘%’
+                *p++ = *s++;
+            }
+        }else {
+            *p++ = *s++;
+        }
+    }
+    *p = 0;
+    write(buf, white);
 }

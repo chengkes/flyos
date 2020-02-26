@@ -2,25 +2,11 @@
 
 global  inByte
 global  outByte
-global  enableInt
-global  disableInt
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; void enableIrq(int) ; todo: 待实现
 enableIrq:
-
-    ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; void enableInt()
-enableInt:
-    sti
-    ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; void disableInt()
-disableInt:
-    cli
+disableIrq:
     ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,7 +30,6 @@ inByte:
     push    edx
     mov     edx, [esp+8]
     in      al, dx
-    nop
     nop
     pop     edx
     ret

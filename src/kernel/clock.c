@@ -41,6 +41,10 @@ void initClock(){
     outByte(((CLOCK_DEFAULT_HZ/CLOCK_COUNTER0_HZ)>>8) & 0xff, PORT_CLOCK_COUNTER0);        // 再写高位
 }
 
+u32 getTicks(){
+    return ticks;
+}
+
 // 延迟t毫秒 
 void delayMs(u32 t) {
     u32 t1 = ticks;

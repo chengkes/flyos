@@ -2,6 +2,9 @@
 #define PCB_H
 
 #include "types.h"
+#include "ipc.h"
+
+#define PCB_SIZE 128             // 进程控制块 大小
 
 typedef enum _ProcessType {
     user_process,
@@ -40,7 +43,10 @@ typedef struct _PCB {
     char name[16];                      // 进程名称
     u8 pstack[PROCESS_STACK_SIZE];      // 进程堆栈
     u32 ttyIdx;                         // TTY索引
-    ProcessType ptype;
+    ProcessType ptype;                  // 系统任务 or 用户进程
+
+    Message  msg;
+    u32 state;
 } PCB ;
 
 void addPCB(u32 entry, u32 priority,u32 ttyIdx, ProcessType ptype);
