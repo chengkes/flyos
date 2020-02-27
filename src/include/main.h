@@ -65,13 +65,12 @@
 #define GDT_SIZE 128
 extern Descriptor gdt[GDT_SIZE];
 
+#define assert(exp) {if(!(exp))assert_fail(#exp, __FILE__, __LINE__) ;}
+
 void initProtectMode() ;
 void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
 
-// ----- CLOCK --------------------
-void initClock();
-void delayMs(u32);
-// ----------------------------
+void assert_fail(char* exp, char* file, int line) ;
 
 #endif

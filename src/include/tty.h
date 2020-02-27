@@ -50,12 +50,11 @@ typedef struct _Tty {
 void initTty();
 void taskTty();
 void write(char* s, Color c);
-// void outChar(Tty*, char ,Color);
-// void clearScreen(Tty* );
 void setCursorPos(Tty* );
-// void dispInt(Tty* t, u32, Color);
 void dispStr(Tty* , char*, Color);
 void scrollUp(Tty* ) ;
 u32 readKey();
+
+void sprintf(char* buf, char *fmt, ...) ;
 
 #endif

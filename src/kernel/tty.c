@@ -167,6 +167,7 @@ void taskTty(){
         dispInt(p, i+1, red);
         outChar(p, '#', red);
     } 
+
     while(1) {
         u32 key =keyboardRead(0);
         if ( key == DOWN) {
@@ -196,33 +197,50 @@ void taskTty(){
     }
 }
 
+void sprintf(char* buf, char *fmt, ...) {
+    u32 addr = (int)(&fmt) + 4;
+    u32* ip;
 
-void printf(char *s, ...) {
-    char buf[512];
-    char*p = buf;
-    
-    u32 addr = s + 4;
-
-    while (*s) {
-        if (*s == '%') {
-            ++s;
-            if (*s == 'x') {  // 以16进制显示整数
-
-            }else if (*s == 'd'){ // 以10进制显示整数
-
-            }else if (*s == 'b'){ // 以2进制显示整数
-
-            } else if (*s == 's'){ // 显示字符串
-
-            } else if (*s == 'c'){ // 显示字符
-
-            }  else if (*s == '%'){ // 显示特殊符号 ‘%’
-                *p++ = *s++;
+    while (*fmt) {
+        if (*fmt == '%') {
+            ++fmt;
+            if (*fmt == 'x') {  // 以16进制显示整数
+                ip = (u32*)addr;
+                addr+=4;
+                ++fmt;
+                itos(*ip, 16, buf);   
+                while (*buf) buf++;
+            }else if (*fmt == 'd'){ // 以10进制显示整数
+                ip = (u32*)addr;
+                addr+=4;
+                ++fmt;
+                itos(*ip, 10, buf);   
+                while (*buf) buf++;
+            }else if (*fmt == 'b'){ // 以2进制显示整数
+                ip = (u32*)addr;
+                addr+=4;
+                ++fmt;
+                itos(*ip, 2, buf);   
+                while (*buf) buf++;
+            } else if (*fmt == 's'){ // 显示字符串
+                char** spp = (char**)addr; 
+                char* sp = *spp;
+                addr+=4;
+                ++fmt;
+                while (*sp) {
+                    *buf++ = *sp++;
+                }
+            } else if (*fmt == 'c'){ // 显示字符
+                ip = (u32*)addr;
+                addr+=4;
+                *buf++ = *ip & 0xff;
+                ++fmt;
+            }  else if (*fmt == '%'){ // 显示特殊符号 ‘%’
+                *buf++ = *fmt++;
             }
         }else {
-            *p++ = *s++;
+            *buf++ = *fmt++;
         }
     }
-    *p = 0;
-    write(buf, white);
+    *buf = 0;
 }

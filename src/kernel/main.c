@@ -3,6 +3,7 @@
 #include "tty.h"
 #include "pcb.h"
 #include "interrupt.h"
+#include "clock.h"
 
 void osinit(){
     initProtectMode();
@@ -15,9 +16,9 @@ void osinit(){
 }
 
 void assert_fail(char* exp, char* file, int line) {
-    // wr("ASSERT FAIL: ", red);
-    // printf(file, red);
-    // printf(line, red);
-    // printf(exp, red); 
+    char buf[1024];
+    sprintf(buf, "Fail(%s:%d):%s\n", file, line, exp);
+    write(buf, red);
     while(1);
+    asm volatile ("ud2");
 }

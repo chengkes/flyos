@@ -17,15 +17,8 @@ PCB* currentPcb;        // 当前运行的进程
 
 // 测试进程A , todo:添加READ系统调用
 static void processA(){
+    
     char a[2] = "A";
-    write(__FILE__, white);
-    write("\n", white);
-    write(__BASE_FILE__, white);
-    write("\n", white);
-    char b[16] = "";
-    itos(__LINE__, 16, b);  
-    write(b, white);
-
     while(1) {
         u32 key = readKey();
        
@@ -37,7 +30,7 @@ static void processA(){
     }
 }
 
-static void sysTask() {
+// static void sysTask() {
     // Message msg;
     // PCB* p = getCurrentPcb();
     // // u32 selfPcbId = getPcbId(p);
@@ -53,7 +46,7 @@ static void sysTask() {
     //     } 
         
     // }
-}
+// }
 
 // 测试进程B
 static void processB(){
@@ -81,7 +74,7 @@ void initPcb(){
     pcbCount = 0;
     currentPcb = &pcbs[0];
     
-    addPCB((u32)taskTty, 1, 0, sys_task);
+    addPCB((u32)taskTty, 10, 0, sys_task);
     addPCB((u32)processB, 5, 1, user_process);  // todo: 测试代码
     addPCB((u32)processC, 2, 2, user_process);
     addPCB((u32)processA, 3, 0, user_process);    
