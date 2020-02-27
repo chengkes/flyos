@@ -13,6 +13,12 @@ typedef struct _Message
     u32 retValue; // 返回值
 } Message;
 
+typedef struct _MessageDeque{
+    Message* data;
+    struct  MessageDeque* next;    
+}MessageDeque;
+
+
 void sendMsg(Message* m);
 
 void receiveMsg(Message* m);

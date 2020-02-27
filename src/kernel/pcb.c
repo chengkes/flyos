@@ -17,16 +17,13 @@ PCB* currentPcb;        // 当前运行的进程
 
 // 测试进程A , todo:添加READ系统调用
 static void processA(){
-    
     char a[2] = "A";
     while(1) {
         u32 key = readKey();
-       
         if (key!=0 && (key& KEYBOARD_FLAG_EXT)==0) {  // 可打印字符 
             a[0] = 0x7f & key;
             write(a, cyan);
         }
-        // delayMs(1000);
     }
 }
 
@@ -84,9 +81,9 @@ PCB* getCurrentPcb(){
     return currentPcb;
 }
 
-// u32 getPcbId(PCB* p) {
-//     return p->ldtSel;
-// }
+PCB* getPcbByIdx(u32 idx) {
+    return &pcbs[idx];
+}
 
 // 进程调度算法
 void schedule(){
@@ -143,5 +140,7 @@ void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
     pcb->p_esp = (u32)(pcb->pstack+PROCESS_STACK_SIZE);
     pcb->ttyIdx = ttyIdx;
 
+    pcb->state = 0;
+    pcb->msgRecvDeque = 0;
     pcbCount++;
 }

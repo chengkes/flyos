@@ -1,12 +1,11 @@
 
 #include "pcb.h"
 #include "ipc.h"
+#include "lib.h"
 
-
-
-// int isPcbReady4ReceiveMsg(u32 pid) {
-//     PCB *p = getPcbById(pid);
-//     return  p->state == 0;
+// int isPcbReady4Receive(u32 idx) {
+//     PCB *p = getPcbByIdx(idx);
+//     return  p->state == 0;  // todo: thingking
 // }
 
 // void unblckPcb(u32 pid) {
@@ -20,17 +19,28 @@
 //     schedule();
 // }
 
-// void sendMsg(Message* m){
-//     if ( isPcbReady4ReceiveMsg(m->dest)) {
-//         // memcpy (m, m->dest -> msg)
-//         // unblock(m->dest)
-//     }else {
-//         // add msg to pcb[m->dest]'s msg-deque
-//     }
+void sendMsg(Message* m){
+    PCB* pDest = getPcbByIdx(m->dest);
+    PCB* pSrc = getPcbByIdx(m->source);
 
-
-//    // blockPcb (m->source) ;
-// }
+    // is pDest ready for recving msg
+    if ( pDest->state==0 || pDest->state == PCB_STATE_RECVING ) { // YES, send msg to pDest
+        memCpy ((u8*) &pDest->msg, (u8*)m, sizeof(Message));
+        // unblock pDest for receiving 
+        pDest->state &= ~PCB_STATE_RECVING;
+    }else {   // NO, add msg to msg-deque, todo : thinking
+        MessageDeque *next = pDest->msgRecvDeque;
+        while (next != 0) {
+            next = next->next;
+        }
+        next->data = m;
+        next->next = 0;
+    }
+          
+    // block pSrc for Sending
+    pSrc->state |= PCB_STATE_SENDING ; 
+    schedule();
+}
 
 // void receiveMsg(Message* m){
 //     // if 

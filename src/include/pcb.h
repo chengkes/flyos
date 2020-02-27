@@ -4,6 +4,9 @@
 #include "types.h"
 #include "ipc.h"
 
+#define PCB_STATE_SENDING 0x02
+#define PCB_STATE_RECVING 0x04
+
 #define PCB_SIZE 128             // 进程控制块 大小
 
 typedef enum _ProcessType {
@@ -47,11 +50,13 @@ typedef struct _PCB {
 
     Message  msg;
     u32 state;
+    MessageDeque* msgRecvDeque;          // 消息接收队列
 } PCB ;
 
 void addPCB(u32 entry, u32 priority,u32 ttyIdx, ProcessType ptype);
 void initPcb();
 PCB* getCurrentPcb();
 void schedule();
+PCB* getPcbByIdx(u32 idx);
 
 #endif
