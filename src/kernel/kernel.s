@@ -102,7 +102,8 @@ restart_int:
 
 ;---------------------------------------------------------
 ;；----- 8059A 硬件中断处理程序 ---------------------------
-%macro hwint_8059A 2 
+
+%macro hwint_master 1 
     ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
     push    gs
     push    fs
@@ -111,7 +112,35 @@ restart_int:
     pushad
     ; SEND EOI 
     mov     al, EOI
-    out     %2, al 
+    out     PORT_8259A_MASTER1, al 
+    ; 判断是否为中断重入     
+    inc     dword [isInt]
+    cmp     dword [isInt], 0    ; isInt!=0,发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
+    jne     .1                  ; isInt==0,没有中断重入，进程运行时发生的中断，可以进行进程切换
+    ; 设置内核寄存器数据     
+    mov     esp, StackTop  ; esp 指向内核栈
+    mov     ax, ss  
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax 
+.1:                         
+    sti    
+    call    [hwintHandlerTable+4*%1]
+    cli 
+    cmp     dword [isInt], 0
+    jne     restart_int              
+    jmp     restart
+%endmacro  
+%macro hwint_slave 1
+    ; 保存进程寄存器数据到PCB, 此时ESP指向PCB中寄存器数据末尾
+    push    gs
+    push    fs
+    push    es
+    push    ds
+    pushad
+    ; SEND EOI 
+    mov     al, EOI
+    out     PORT_8259A_SLAVE1, al 
     ; 判断是否为中断重入     
     inc     dword [isInt]
     cmp     dword [isInt], 0    ; isInt!=0,发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
@@ -131,23 +160,23 @@ restart_int:
     jmp     restart
 %endmacro  
 
-hwint00:    hwint_8059A 0, PORT_8259A_MASTER1
-hwint01:    hwint_8059A 1, PORT_8259A_MASTER1
-hwint02:    hwint_8059A 2, PORT_8259A_MASTER1
-hwint03:    hwint_8059A 3, PORT_8259A_MASTER1
-hwint04:    hwint_8059A 4, PORT_8259A_MASTER1
-hwint05:    hwint_8059A 5, PORT_8259A_MASTER1
-hwint06:    hwint_8059A 6, PORT_8259A_MASTER1
-hwint07:    hwint_8059A 7, PORT_8259A_MASTER1
+hwint00:    hwint_master 0 ; clock
+hwint01:    hwint_master 1 ; keyboard
+hwint02:    hwint_master 2 ; cascade
+hwint03:    hwint_master 3 ; second serial
+hwint04:    hwint_master 4 ; first serial
+hwint05:    hwint_master 5 ; XT winchester
+hwint06:    hwint_master 6 ; floppy
+hwint07:    hwint_master 7 ; printer
 
-hwint08:    hwint_8059A 08, PORT_8259A_SLAVE1
-hwint09:    hwint_8059A 09, PORT_8259A_SLAVE1 
-hwint10:    hwint_8059A 10, PORT_8259A_SLAVE1 
-hwint11:    hwint_8059A 11, PORT_8259A_SLAVE1
-hwint12:    hwint_8059A 12, PORT_8259A_SLAVE1
-hwint13:    hwint_8059A 13, PORT_8259A_SLAVE1
-hwint14:    hwint_8059A 14, PORT_8259A_SLAVE1
-hwint15:    hwint_8059A 15, PORT_8259A_SLAVE1
+hwint08:    hwint_slave 08 ; 
+hwint09:    hwint_slave 09 ;  
+hwint10:    hwint_slave 10 ;  
+hwint11:    hwint_slave 11 ; 
+hwint12:    hwint_slave 12 ; 
+hwint13:    hwint_slave 13 ; 
+hwint14:    hwint_slave 14 ; 
+hwint15:    hwint_slave 15 ; 
 
 ;；-----中断和异常 系统异常处理程序 ---------------------------
 divide_error:
