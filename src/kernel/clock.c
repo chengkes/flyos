@@ -3,16 +3,7 @@
 #include "interrupt.h"
 #include "lib.h"
 #include "pcb.h"
-
-// 时钟芯片8253端口
-#define PORT_CLOCK_COUNTER0  0x40
-#define PORT_CLOCK_COUNTER1  0x41
-#define PORT_CLOCK_COUNTER2  0x42
-#define PORT_CLOCK_CONTROL   0x43
-
-#define CLOCK_DEFAULT_HZ    1193180     // 输入频率
-#define CLOCK_COUNTER0_HZ   1000   // 每1ms发生一次时钟中断, 该值必须大于18
-#define CLOCK_MODE          0x34    
+#include "clock.h"
 
 static volatile u32 ticks;      // 时钟中断发生次数
 volatile u32 isInt ;     // 是否在处理中断程序
