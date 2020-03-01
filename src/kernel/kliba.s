@@ -1,13 +1,8 @@
 [section .text] 
 
-global  inByte
-global  outByte
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; void enableIrq(int) ; todo: 待实现
-enableIrq:
-disableIrq:
-    ret
+global inByte
+global outByte 
+global readPort
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 写端口
@@ -32,4 +27,20 @@ inByte:
     in      al, dx
     nop
     pop     edx
+    ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 以Word形式读端口
+; void readPort(u16 port, u16* buf,u32 size)
+readPort:
+    push    edi
+    push    ecx
+    push    edx
+    mov     edx, [esp+12+4]  ; port
+    mov     edi, [esp+12+8]  ; buf
+    mov     ecx, [esp+12+12] ; size
+    rep     insw
+    pop     edx
+    pop     ecx
+    pop     edi
     ret

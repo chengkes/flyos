@@ -138,9 +138,10 @@ restart_int:
     push    es
     push    ds
     pushad
-    ; SEND EOI 
     mov     al, EOI
-    out     PORT_8259A_SLAVE1, al 
+    out     PORT_8259A_MASTER1, al   ; SEND EOI to master
+    nop
+    out     PORT_8259A_SLAVE1, al    ; SEND EOI to slave
     ; 判断是否为中断重入     
     inc     dword [isInt]
     cmp     dword [isInt], 0    ; isInt!=0,发生中断重入，内核运行时发生的中断，此时 esp 指向内核堆栈，不能切换进程
@@ -162,12 +163,12 @@ restart_int:
 
 hwint00:    hwint_master 0 ; clock
 hwint01:    hwint_master 1 ; keyboard
-hwint02:    hwint_master 2 ; cascade
-hwint03:    hwint_master 3 ; second serial
-hwint04:    hwint_master 4 ; first serial
-hwint05:    hwint_master 5 ; XT winchester
-hwint06:    hwint_master 6 ; floppy
-hwint07:    hwint_master 7 ; printer
+hwint02:    hwint_master 2 ; cascade            
+hwint03:    hwint_master 3 ; second serial  串口2
+hwint04:    hwint_master 4 ; first serial   串口1
+hwint05:    hwint_master 5 ; XT winchester  LPT2
+hwint06:    hwint_master 6 ; floppy         
+hwint07:    hwint_master 7 ; printer        LPT1
 
 hwint08:    hwint_slave 08 ; 
 hwint09:    hwint_slave 09 ;  
@@ -175,7 +176,7 @@ hwint10:    hwint_slave 10 ;
 hwint11:    hwint_slave 11 ; 
 hwint12:    hwint_slave 12 ; 
 hwint13:    hwint_slave 13 ; 
-hwint14:    hwint_slave 14 ; 
+hwint14:    hwint_slave 14 ;  hard disk
 hwint15:    hwint_slave 15 ; 
 
 ;；-----中断和异常 系统异常处理程序 ---------------------------

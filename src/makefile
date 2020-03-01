@@ -1,5 +1,7 @@
 KenerlEntry=0x30400  # 必须与boot/loader.asm中一致
 
+QEMUTAG= -fda run/os.img -hda run/hd.img -boot a 
+
 AS=nasm
 CC=gcc
 LD=ld
@@ -41,9 +43,9 @@ clean:
 	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm $(S_OBJ) $(C_OBJ) 
 
 qemu:run/os.img
-	qemu-system-i386 -fda run/os.img -boot a
+	qemu-system-i386 $(QEMUTAG)
 debug:run/os.img
-	qemu-system-i386 -S -s -fda run/os.img -boot a &
+	qemu-system-i386 -S -s $(QEMUTAG) &
 	sleep 1
 	cgdb --command=run/gdbcmd.txt
 run:run/os.img     

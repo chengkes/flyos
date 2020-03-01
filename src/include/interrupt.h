@@ -31,19 +31,25 @@
 #define INT_VECTOR_IRQ0    0x20
 #define INT_VECTOR_IRQ8    0x28
 
-#define IRQ_HANDLER_IDX_CLOCK     0
-#define IRQ_HANDLER_IDX_KEYBOARD  1
+#define IRQ_IDX_CLOCK          0
+#define IRQ_IDX_KEYBOARD       1
+#define IRQ_IDX_CASCADE        2
+#define IRQ_IDX_SECOND_SERIAL  3
+#define IRQ_IDX_FIRST_SERIAL   4
+#define IRQ_IDX_XT_WINCHESTER  5 
+#define IRQ_IDX_FLOPPY         6
+#define IRQ_IDX_PRINTER        7
+
+#define IRQ_IDX_HARDDISK       14       // AT WINCHESTERs
 
 void putIrqHandler(u8 no, void* handler);
 void putSyscall(u8 no, void* handler);
 void init8259a();
 void buildIdt();
 
-void enableInt();
-void disableInt();
+void setIrq(int irq, int enable) ;
 
 // ----- 来自汇编的函数声明 --------------------
-void enableIrq(int);
 
 void hwint00();
 void hwint01();

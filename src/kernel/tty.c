@@ -96,12 +96,13 @@ void setCursorPos (Tty* t ){
         scrollUp(t);
     }else {
         u32 pos = t->currentAddr/2 + t->cursorRow * MAX_COLS + t->cursorCol;
-        disableInt();
+        asm volatile("pushf");
+        asm volatile("cli");
         outByte(CRTC_CURSOR_LOC_L, PORT_DISPLAY_CRTC_ADDR);
         outByte((pos)&0xff, PORT_DISPLAY_CRTC_DATA);
         outByte(CRTC_CURSOR_LOC_H, PORT_DISPLAY_CRTC_ADDR);
         outByte((pos >> 8) & 0xff, PORT_DISPLAY_CRTC_DATA);
-        enableInt();
+        asm volatile("popf");
     }
 }
 
@@ -128,12 +129,13 @@ void activeTty(int idx){
     while (idx>= TTY_COUNT)  idx -= TTY_COUNT;
     
     u32 pos =  tty[idx].currentAddr/2 ;
-    disableInt();
+    asm volatile("pushf");
+    asm volatile("cli");
     outByte(CRTC_START_ADDR_H, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos>>8) & 0xff, PORT_DISPLAY_CRTC_DATA);
     outByte(CRTC_START_ADDR_L, PORT_DISPLAY_CRTC_ADDR );
     outByte( (pos) & 0xff, PORT_DISPLAY_CRTC_DATA);
-    enableInt();
+    asm volatile("popf");
     currentTtyIdx = idx ;
     setCursorPos(&tty[currentTtyIdx]);
 }
@@ -197,8 +199,7 @@ void taskTty(){
     }
 }
 
-void sprintf(char* buf, char *fmt, ...) {
-    u32 addr = (int)(&fmt) + 4;
+void vsprintf(char* buf, char *fmt, u32 addr) {
     u32* ip;
 
     while (*fmt) {
@@ -243,4 +244,16 @@ void sprintf(char* buf, char *fmt, ...) {
         }
     }
     *buf = 0;
+}
+
+void sprintf(char* buf, char *fmt, ...) {
+    u32 addr = (int)(&fmt) + 4;
+    vsprintf(buf, fmt, addr);
+}
+
+void printf(char *fmt, ...) {
+    u32 addr = (int)(&fmt) + 4;
+    char buf[512];
+    vsprintf(buf, fmt, addr);
+    write(buf, white);
 }

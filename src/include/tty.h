@@ -49,12 +49,13 @@ typedef struct _Tty {
 
 void initTty();
 void taskTty();
-void write(char* s, Color c);
 void setCursorPos(Tty* );
 void dispStr(Tty* , char*, Color);
 void scrollUp(Tty* ) ;
+
 u32 readKey();
 
+void write(char* s, Color c);
 void sprintf(char* buf, char *fmt, ...) ;
-
+void printf(char *fmt, ...);
 #endif

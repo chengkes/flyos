@@ -13,15 +13,16 @@ typedef struct _Message {
 #define PCB_STATE_SENDING 0x02
 #define PCB_STATE_RECVING 0x04
 
-#define ANY_PCB  (PCB_SIZE+1)
+#define PCB_IDX_INTERRUPT   (PCB_SIZE+1)
+#define PCB_IDX_ANY         (PCB_SIZE+2)
 
 #define IPC_MSG_GET_TICKS 1
 
 #define PCB_SIZE 128             // 进程控制块 大小
 
 typedef enum _ProcessType {
-    user_process,
-    sys_task
+    USER_PROCESS,
+    SYS_TASK
 } ProcessType;
 
 #define LDT_SIZE 2          // LDT 大小
@@ -48,7 +49,7 @@ typedef struct _PCB {
     u32 p_esp;
     u32 ss;
  
-    u16  ldtSel;                        //第17个，此处至开头数据的位置需要保持不变
+    u16  ldtSel;                        //第17个，此处至开头的数据位置应保持不变
     Descriptor ldt[LDT_SIZE];
     u32 entry;                          // 进程入口
     u32 priority;                       // 优先级
@@ -60,6 +61,7 @@ typedef struct _PCB {
 
     Message* pMsg;  // 指向本进程要发送或接收的消息
     u32 state;      // 进程状态， state == 0表示在运行
+    u32 intMsgCount; // 待接收中断消息个数
     struct _PCB* recvDeque; // 等待本进程接收的消息队列
 } PCB ;
 
@@ -70,4 +72,5 @@ void schedule();
 PCB* getPcbByIdx(u32 idx);
 void receiveMsg(Message*);
 void sendMsg(Message*);
+
 #endif

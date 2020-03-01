@@ -6,6 +6,12 @@
 #include "main.h"
 #include "clock.h"
 #include "lib.h"
+#include "hd.h"
+
+// #define PCB_IDX_A  1
+// #define PCB_IDX_B  2
+// #define PCB_IDX_C  3
+// #define PCB_IDX_TASK_HD  4
 
 // LDT中 选择子
 #define LDT_SELECTOR_D32        (0x00 | SA_TIL )   // 数据段 选择子
@@ -50,7 +56,7 @@ static void processB(){
 static void processC(){
     // 测试 IPC recv msg
     Message msg;
-    msg.sendPcbIdx = ANY_PCB;   // 接收谁的消息
+    msg.sendPcbIdx = PCB_IDX_ANY;   // 接收谁的消息
     msg.recvPcbIdx = 3;         // 本进程 IDX 
     receiveMsg(&msg);
     assert(msg.type ==1 && msg.data==2);
@@ -68,11 +74,12 @@ void initPcb(){
     pcbCount = 0;
     currentPcb = &pcbs[0];
     
-    addPCB((u32)taskTty, 10, 0, sys_task);
-    addPCB((u32)processA, 3, 0, user_process);      // 测试进程
-    addPCB((u32)processB, 2, 1, user_process);      // 测试进程
-    addPCB((u32)processC, 50, 2, user_process);     // 测试进程
-}
+    addPCB((u32)taskTty, 10, 0, SYS_TASK);
+    addPCB((u32)processA, 3, 0, USER_PROCESS);      // 测试进程
+    addPCB((u32)processB, 2, 1, USER_PROCESS);      // 测试进程
+    addPCB((u32)processC, 50, 2, USER_PROCESS);     // 测试进程
+    addPCB((u32)taskHd, 10, 0, SYS_TASK);
+} 
 
 PCB* getCurrentPcb(){
     return currentPcb;
@@ -120,7 +127,7 @@ void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
     PCB *pcb = &pcbs[pcbCount];
     u32 dpl = DA_DPL3;
     u32 rpl = SA_RPL3;
-    if (pt == sys_task){    
+    if (pt == SYS_TASK){    
         dpl = DA_DPL1;
         rpl = SA_RPL1;
     }
@@ -137,7 +144,7 @@ void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
     pcb->p_esp = (u32)(pcb->pstack+PROCESS_STACK_SIZE);
     pcb->ttyIdx = ttyIdx;
 
-    pcb->state = 0;
+    pcb->state = pcb->intMsgCount = 0;
     pcb->pMsg = 0;
     pcb->recvDeque = 0;
 
@@ -147,20 +154,27 @@ void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
 // IPC 发送消息
 void sendMsg(Message* m){
     assert(m->sendPcbIdx != m->recvPcbIdx);
-    assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount );
-    assert(m->sendPcbIdx>=0 && m->sendPcbIdx<pcbCount );
+    assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount);
+    assert((m->sendPcbIdx>=0 && m->sendPcbIdx<pcbCount) || m->sendPcbIdx==PCB_IDX_INTERRUPT );
 
-    PCB *pSelf = getPcbByIdx(m->sendPcbIdx);
-    PCB *pDest = getPcbByIdx(m->recvPcbIdx);
+    PCB *pDest = getPcbByIdx(m->recvPcbIdx); 
 
     // is pDest ready for recving msg ?
     if (pDest->state == PCB_STATE_RECVING && 
-        (pDest->pMsg->sendPcbIdx == ANY_PCB || pDest->pMsg->sendPcbIdx == m->sendPcbIdx) ) { // ready, send msg to pDest
+            (pDest->pMsg->sendPcbIdx == PCB_IDX_ANY 
+            || pDest->pMsg->sendPcbIdx == m->sendPcbIdx
+            || pDest->pMsg->sendPcbIdx == PCB_IDX_INTERRUPT) ) { // ready, send msg to pDest
         memCpy ((u8*) pDest->pMsg, (u8*)m, sizeof(Message));
         // unblock pDest for receiving 
         pDest->state &= ~PCB_STATE_RECVING;
         assert(pDest->state == 0);
-    }else {   // not ready, add msg to msg-deque, todo : thinking
+    }else {   // not ready, add msg to msg-deque 
+        if (m->sendPcbIdx==PCB_IDX_INTERRUPT) { // 中断发送的消息
+            ++(pDest->intMsgCount);
+            return;
+        }
+
+        PCB *pSelf = getPcbByIdx(m->sendPcbIdx);
         pSelf->pMsg = m;
         pSelf->recvDeque = 0;
         PCB*  last = pDest;
@@ -176,19 +190,30 @@ void sendMsg(Message* m){
         schedule();
         delayMs(1000/CLOCK_COUNTER0_HZ); // 等待一个时钟周期，保证进程切换出去 
     }
-}
+} 
+
 // IPC 接收消息
 void receiveMsg(Message* m){
     assert(m->sendPcbIdx != m->recvPcbIdx);
+    assert( (m->sendPcbIdx>=0 && m->sendPcbIdx<pcbCount) 
+        || m->sendPcbIdx == PCB_IDX_INTERRUPT ||  m->sendPcbIdx == PCB_IDX_ANY );
     assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount );
 
     PCB *pSelf = getPcbByIdx(m->recvPcbIdx);
+    if (pSelf->intMsgCount > 0) {  // 接收中断消息
+        Message msg;
+        msg.sendPcbIdx = PCB_IDX_INTERRUPT;
+        msg.recvPcbIdx = m->recvPcbIdx;
+        memCpy((u8*)m, (u8*)(&msg), sizeof(Message) );
+        -- (pSelf->intMsgCount);
+        return;
+    }
 
     // search the recvDeque 
     PCB* p = pSelf;
     while (p->recvDeque!=0) {
         PCB* current = p->recvDeque;
-        if (m->sendPcbIdx == ANY_PCB || m->sendPcbIdx == current->pMsg->sendPcbIdx) { // 消息队列中有待处理消息
+        if (m->sendPcbIdx == PCB_IDX_ANY || m->sendPcbIdx == current->pMsg->sendPcbIdx) { // 消息队列中有待处理消息
             memCpy((u8*)m, (u8*)current->pMsg, sizeof(Message) );
             // 从消息队列移除
             p->recvDeque = current->recvDeque;

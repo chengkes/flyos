@@ -35,15 +35,17 @@ void init8259a(){
     outByte(0x01, PORT_8259A_MASTER2);     // 写ICW4
     outByte(0x01, PORT_8259A_SLAVE2);
 
-    outByte(0x0fc, PORT_8259A_MASTER2);     // 写OCW1, 主片屏蔽所有中断
-    outByte(0x0ff, PORT_8259A_SLAVE2);      // 写OCW1, 从片屏蔽所有中断
+    outByte(0xF8, PORT_8259A_MASTER2);     // 写OCW1, 主片打开键盘、时钟,级联
+    outByte(0xBF, PORT_8259A_SLAVE2);      // 写OCW1, 从片打开硬盘
 }
 
 void putIrqHandler(u8 no, void* handler){
+    assert(no>=0 && no<IRQ_COUNT);
     hwintHandlerTable[no] = handler;
 }
 
 void putSyscall(u8 no, void* handler){
+    assert(no>=0 && no<SYS_CALL_COUNT);
     syscallTable[no] = handler;
 }
 
@@ -93,10 +95,23 @@ void exceptionHandler(int vec_no, int err_code, int eip, int cs, int eflags) {
     
 }
 
-void enableInt(){
-    asm volatile("sti");
-}
+//  启用或禁用IRQ 
+void setIrq(int irq, int enable) {
+    assert(irq>=0 && irq<=15);
+    
+    u16 port = PORT_8259A_MASTER2;
+    if (irq>=8) {
+        port = PORT_8259A_SLAVE2;
+        irq -= 8;
+    }
+    irq = 1 << irq;
 
-void disableInt(){
+    asm volatile("pushf");   // 保存标志寄存器，主要是中断标志
     asm volatile("cli");
+    if (enable) {  // 启用IRQ，令ocw1的irq位=0
+        outByte(inByte(port) & ~irq, port); 
+    }else{   // 禁用IRQ，令ocw1的irq位=1
+        outByte(inByte(port) | irq, port);
+    } 
+    asm volatile("popf");   // 恢复标志寄存器，主要是中断标志
 }
