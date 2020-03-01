@@ -13,21 +13,6 @@ static void sysWrite(char* s, Color c, PCB* p) {
     dispStr( &tty[p->ttyIdx], s, c);
 }
 
-void initTty() {
-    currentTtyIdx = 0;
-    u32 addr = 0; 
-    for(int i=0; i<TTY_COUNT; i++) {
-        Tty* p = &tty[i];
-        p->currentAddr = p->startAddr = addr;
-        p->defaultColor = white;
-        p->limit = 2*MAX_COLS*MAX_ROWS;     
-        p->inputBufCount = p->inputBufHead = p->inputBufTail = 0;
-        addr += p->limit;
-    }
-
-    putSyscall(SYSCALL_IDX_WRITE, sysWrite);
-}
-
 Tty* getCurrentTty(){
     return &tty[currentTtyIdx];
 }
@@ -124,7 +109,7 @@ void scrollUp(Tty* t ) {
 }
 
 // 通过改变显示起始地址切换TTY
-void activeTty(int idx){
+static void activeTty(int idx){
     while (idx< 0)  idx += TTY_COUNT;
     while (idx>= TTY_COUNT)  idx -= TTY_COUNT;
     
@@ -140,7 +125,7 @@ void activeTty(int idx){
     setCursorPos(&tty[currentTtyIdx]);
 }
 
-void putKey2Tty(Tty* t,u32 key){
+static void putKey2Tty(Tty* t,u32 key){
     if (t->inputBufCount < TTY_INPUT_BUF_SIZE) {
         t->inputBuf[t->inputBufHead++] = key;
         ++(t->inputBufCount);
@@ -161,15 +146,29 @@ u32 readKey(){
     return key;
 }
 
-void taskTty(){
-    for (int i=0; i<TTY_COUNT; i++) {
+
+void initTty() {
+    currentTtyIdx = 0;
+    u32 addr = 0; 
+    for(int i=0; i<TTY_COUNT; i++) {
         Tty* p = &tty[i];
+        p->currentAddr = p->startAddr = addr;
+        p->defaultColor = white;
+        p->limit = 2*MAX_COLS*MAX_ROWS;     
+        p->inputBufCount = p->inputBufHead = p->inputBufTail = 0;
+        addr += p->limit;
+
         clearScreen(p);
         dispStr(p, "TTY-", white);
         dispInt(p, i+1, red);
         outChar(p, '#', red);
-    } 
+    }
 
+    putSyscall(SYSCALL_IDX_WRITE, sysWrite);
+}
+
+
+void taskTty(){
     while(1) {
         u32 key =keyboardRead(0);
         if ( key == DOWN) {

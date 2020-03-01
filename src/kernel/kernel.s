@@ -12,6 +12,8 @@ GDT_SELECTOR_VIDEO   equ   (0x18 | SA_RPL3)     ; 视频段 选择子
 GDT_SELECTOR_TSS     equ   20h
 PORT_8259A_MASTER1   equ   20h
 PORT_8259A_SLAVE1    equ   0A0h   
+PORT_8259A_MASTER2   equ   21h
+PORT_8259A_SLAVE2    equ   0A1h  
 
 ; 与klibc.c 中 PCB结构 中变量位置保持一致
 PCB_LDT_SEL   equ   17*4  
@@ -110,6 +112,9 @@ restart_int:
     push    es
     push    ds
     pushad
+    in      al, PORT_8259A_MASTER2
+    or      al, 1<<(%1)
+    out     PORT_8259A_MASTER2, al   ; 禁用当前中断
     ; SEND EOI 
     mov     al, EOI
     out     PORT_8259A_MASTER1, al 
@@ -127,6 +132,9 @@ restart_int:
     sti    
     call    [hwintHandlerTable+4*%1]
     cli 
+    in      al, PORT_8259A_MASTER2
+    and      al, ~(1<<(%1))
+    out     PORT_8259A_MASTER2, al   ; 启用当前中断s
     cmp     dword [isInt], 0
     jne     restart_int              
     jmp     restart
@@ -138,6 +146,9 @@ restart_int:
     push    es
     push    ds
     pushad
+    in      al, PORT_8259A_SLAVE2
+    or      al, 1<<(%1-8)
+    out     PORT_8259A_SLAVE2, al   ; 禁用当前中断
     mov     al, EOI
     out     PORT_8259A_MASTER1, al   ; SEND EOI to master
     nop
@@ -156,6 +167,9 @@ restart_int:
     sti    
     call    [hwintHandlerTable+4*%1]
     cli 
+    in      al, PORT_8259A_SLAVE2
+    and      al, ~(1<<(%1-8))
+    out     PORT_8259A_SLAVE2, al   ; 启用当前中断
     cmp     dword [isInt], 0
     jne     restart_int              
     jmp     restart
@@ -280,7 +294,6 @@ int90syscall: ;
     jmp     restart
 
 ;;; ---------  系统调研功能的实现  ------------------------
-
 INT_VECTOR_SYSCALL  equ     90h
 SYSCALL_IDX_WRITE   equ     0
 ;;---------- tty.h -----------------------------------

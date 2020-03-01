@@ -18,7 +18,7 @@ typedef struct _Message {
 
 #define IPC_MSG_GET_TICKS 1
 
-#define PCB_SIZE 128             // 进程控制块 大小
+#define PCB_SIZE 0x7f             // 进程控制块 大小
 
 typedef enum _ProcessType {
     USER_PROCESS,

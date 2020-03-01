@@ -162,8 +162,7 @@ void sendMsg(Message* m){
     // is pDest ready for recving msg ?
     if (pDest->state == PCB_STATE_RECVING && 
             (pDest->pMsg->sendPcbIdx == PCB_IDX_ANY 
-            || pDest->pMsg->sendPcbIdx == m->sendPcbIdx
-            || pDest->pMsg->sendPcbIdx == PCB_IDX_INTERRUPT) ) { // ready, send msg to pDest
+            || pDest->pMsg->sendPcbIdx == m->sendPcbIdx) ) { // ready, send msg to pDest
         memCpy ((u8*) pDest->pMsg, (u8*)m, sizeof(Message));
         // unblock pDest for receiving 
         pDest->state &= ~PCB_STATE_RECVING;
@@ -200,7 +199,8 @@ void receiveMsg(Message* m){
     assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount );
 
     PCB *pSelf = getPcbByIdx(m->recvPcbIdx);
-    if (pSelf->intMsgCount > 0) {  // 接收中断消息
+    if (pSelf->intMsgCount > 0 && 
+        (m->sendPcbIdx == PCB_IDX_INTERRUPT ||  m->sendPcbIdx == PCB_IDX_ANY )) {  // 接收中断消息
         Message msg;
         msg.sendPcbIdx = PCB_IDX_INTERRUPT;
         msg.recvPcbIdx = m->recvPcbIdx;
@@ -233,5 +233,5 @@ void receiveMsg(Message* m){
     pSelf->state |= PCB_STATE_RECVING;
     assert(pSelf->state != 0);
     schedule();
-    delayMs(1000/CLOCK_COUNTER0_HZ); // 等待一个时钟周期，保证进程切换出去 
+    delayMs(1000/CLOCK_COUNTER0_HZ+1); // 等待一个时钟周期，保证进程切换出去 
 }

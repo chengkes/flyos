@@ -1,12 +1,12 @@
 #ifndef HD_H
 #define HD_H
 
-#define PORT_HD_SECONDARY_CMD_DATA          0x170
-#define PORT_HD_SECONDARY_CMD_FEATURES      0x171
-#define PORT_HD_SECONDARY_CMD_SECTOR_COUNT  0x172
-#define PORT_HD_SECONDARY_CMD_LBA_LOW       0x173
-#define PORT_HD_SECONDARY_CMD_LBA_MID       0x174
-#define PORT_HD_SECONDARY_CMD_LBA_HIGH      0x175 
+#define PORT_HD_SECONDARY_DATA          0x170
+#define PORT_HD_SECONDARY_FEATURES      0x171
+#define PORT_HD_SECONDARY_SECTOR_COUNT  0x172
+#define PORT_HD_SECONDARY_LBA_LOW       0x173
+#define PORT_HD_SECONDARY_LBA_MID       0x174
+#define PORT_HD_SECONDARY_LBA_HIGH      0x175 
 
 /*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
 	+-----+-----+-----+-----+-----+-----+-----+-----+
@@ -24,7 +24,7 @@
  	                                                            When L=0, addressing is by 'CHS' mode.
  	                                                            When L=1, addressing is by 'LBA' mode.
 */
-#define PORT_HD_SECONDARY_CMD_DEVICE        0x176
+#define PORT_HD_SECONDARY_DEVICE        0x176
 
 /* 	Any pending interrupt is cleared whenever this register is read.
 	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
@@ -41,7 +41,7 @@
 	   |     `--------------------------------------- 6. Drive Ready.
 	   `--------------------------------------------- 7. Busy. If BSY=1, no other bits in the register are valid.
 */
-#define PORT_HD_SECONDARY_CMD_STATUS        0x177   
+#define PORT_HD_SECONDARY_STATUS        0x177   
 /*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
 	+-----+-----+-----+-----+-----+-----+-----+-----+
 	| HOB |  -  |  -  |  -  |  -  |SRST |-IEN |  0  |
@@ -62,7 +62,7 @@
 	                                                    - defined by 48-bit Address feature set.
 */ 
 #define PORT_HD_SECONDARY_CONTROL           0x376
-#define PORT_HD_SECONDARY_CMD_ERROR         PORT_HD_SECONDARY_CMD_FEATURES
+#define PORT_HD_SECONDARY_ERROR         PORT_HD_SECONDARY_FEATURES
 /*
 	+--------+---------------------------------+-----------------+
 	| Command| Command Description             | Parameters Used |
@@ -82,21 +82,26 @@
 	CY    Register 1F4+1F5: Cylinder low + high	V     Indicates that the register contains a valid paramterer.
 	DH    Register 1F6: Drive / Head
 */
-#define PORT_HD_SECONDARY_CMD_COMMAND       PORT_HD_SECONDARY_CMD_STATUS
+#define PORT_HD_SECONDARY_COMMAND       PORT_HD_SECONDARY_STATUS
 
-#define PORT_HD_PRIMARY_CMD_DATA          0x1F0
-#define PORT_HD_PRIMARY_CMD_FEATURES      0x1F1
-#define PORT_HD_PRIMARY_CMD_SECTOR_COUNT  0x1F2
-#define PORT_HD_PRIMARY_CMD_LBA_LOW       0x1F3
-#define PORT_HD_PRIMARY_CMD_LBA_MID       0x1F4
-#define PORT_HD_PRIMARY_CMD_LBA_HIGH      0x1F5
-#define PORT_HD_PRIMARY_CMD_DEVICE        0x1F6
-#define PORT_HD_PRIMARY_CMD_STATUS        0x1F7            
-#define PORT_HD_PRIMARY_CONTROL           0x3F6
-#define PORT_HD_PRIMARY_CMD_ERROR         PORT_HD_PRIMARY_CMD_FEATURES
-#define PORT_HD_PRIMARY_CMD_COMMAND       PORT_HD_PRIMARY_CMD_STATUS
+#define PORT_HD_PRIMARY_DATA          0x1F0
+#define PORT_HD_PRIMARY_FEATURES      0x1F1
+#define PORT_HD_PRIMARY_SECTOR_COUNT  0x1F2
+#define PORT_HD_PRIMARY_LBA_LOW       0x1F3
+#define PORT_HD_PRIMARY_LBA_MID       0x1F4
+#define PORT_HD_PRIMARY_LBA_HIGH      0x1F5
+#define PORT_HD_PRIMARY_DEVICE        0x1F6
+#define PORT_HD_PRIMARY_STATUS        0x1F7            
+#define PORT_HD_PRIMARY_CONTROL       0x3F6
+#define PORT_HD_PRIMARY_ERROR         PORT_HD_PRIMARY_FEATURES
+#define PORT_HD_PRIMARY_COMMAND       PORT_HD_PRIMARY_STATUS
 
 #define HD_CMD_IDENTIFY		0xEC
+#define HD_CMD_READ			0x20
+
+#define SECTOR_SIZE 	512
+
+#define MAKE_DEVICE(lba,device,lbaHigh) (0xA0 | ((1 & (lba))<<6) | ((1 & (device))<<4) | ((lbaHigh) & 0x0f))
 
 void taskHd();
 #endif
