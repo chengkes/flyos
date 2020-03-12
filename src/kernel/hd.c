@@ -14,7 +14,7 @@ void hdIrqHandler() {
     msg.recvPcbIdx = 4;    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
     inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断
     sendMsg(&msg);   // 发送中断消息 
-    printf("hd send interrupt msg over \n");
+    printf("hdIrqHandler over...<<<<<<<<<<<<< \n");
 }
   
 void initHd() {
@@ -25,7 +25,7 @@ void initHd() {
     putIrqHandler(IRQ_IDX_HARDDISK, hdIrqHandler); // 指定硬盘中断处理程序
     
     printHdIdentityInfo(0);   // 获取硬盘信息并显示 
-    printPartInfo(0);         // 获取硬盘分区信息
+    printPartInfo(0, 0);         // 获取硬盘分区信息
 }
 
 // 等待硬盘操作完成
@@ -42,18 +42,27 @@ void wait4hdInt(){
     msg.sendPcbIdx = PCB_IDX_INTERRUPT ;
     msg.recvPcbIdx = 4;    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
     receiveMsg(&msg);                   // 收到硬盘中断消息，表明命令执行完毕
+    printf("wait4hdInt over....>>>>>>>>>>>> \n");
 }
+
+void hdCmd(u8 sectorCnt, u32 sectorNo, u32 device, u32 cmd){
+    wait4hdReady();
+    outByte(0, PORT_HD_PRIMARY_FEATURES);
+    outByte(0 , PORT_HD_PRIMARY_CONTROL); 
+    outByte(sectorCnt & 0xff, PORT_HD_PRIMARY_SECTOR_COUNT);
+    outByte(sectorNo & 0xff, PORT_HD_PRIMARY_LBA_LOW);
+    outByte((sectorNo>>8) & 0xff, PORT_HD_PRIMARY_LBA_MID);
+    outByte((sectorNo>>16) & 0xff, PORT_HD_PRIMARY_LBA_HIGH);
+    outByte( MAKE_DEVICE(1, device, (sectorNo>>24) & 0x0F ), PORT_HD_PRIMARY_DEVICE);
+    outByte(cmd, PORT_HD_PRIMARY_COMMAND);
+    wait4hdInt();
+}
+
 
 // 像硬盘发送identity命令，获取硬盘参数，保存到buf中，数据容量为256个word
 void identityHd(int device, u16* buf) {
-    wait4hdReady();    
-    
     // 像硬盘发生IDENTIFY命令，获取硬盘参数
-    outByte(0, PORT_HD_PRIMARY_CONTROL);   // let the Interrupt Enable
-    outByte(MAKE_DEVICE(0, device, 0), PORT_HD_PRIMARY_DEVICE);
-    outByte(HD_CMD_IDENTIFY, PORT_HD_PRIMARY_COMMAND);
-
-    wait4hdInt();
+    hdCmd(0, 0, 0, HD_CMD_IDENTIFY); 
     readPort(PORT_HD_PRIMARY_DATA, buf, 256);
 }
 
@@ -89,38 +98,52 @@ void printHdIdentityInfo(int device) {
 
 // 从硬盘设备device中读取sectorNo开始的 sectorCnt个sector数据到buf
 void readHd(int device, int sectorNo, int sectorCnt, u16* buf){
-    wait4hdReady();   
-    printf("wait4hdReady over \n");
 
-    outByte(0, PORT_HD_PRIMARY_FEATURES);
-    outByte(0 , PORT_HD_PRIMARY_CONTROL); 
-    outByte(sectorCnt & 0xff, PORT_HD_PRIMARY_SECTOR_COUNT);
-    outByte(sectorNo & 0xff, PORT_HD_PRIMARY_LBA_LOW);
-    outByte((sectorNo>>8) & 0xff, PORT_HD_PRIMARY_LBA_MID);
-    outByte((sectorNo>>16) & 0xff, PORT_HD_PRIMARY_LBA_HIGH);
-    outByte( MAKE_DEVICE(1, device, (sectorNo>>24) & 0x0F ), PORT_HD_PRIMARY_DEVICE);
-    outByte(HD_CMD_READ, PORT_HD_PRIMARY_COMMAND);
-    wait4hdInt();
-
-    printf("wait4hdInt over \n");
+    hdCmd(sectorCnt, sectorNo, device, HD_CMD_READ);
     readPort(PORT_HD_PRIMARY_DATA, buf, sectorCnt*SECTOR_SIZE/2 );
 }
 
-void printPartInfo(int device) {
+void printPartInfo(int device, int sectorNo) {
     u16 buf[256];
-    readHd(0, 0, 1, buf);
+    readHd(0, sectorNo, 1, buf);
     int idx = 0x1be;
     u8* p = (u8*)buf;
-    printf("%x %x %x \n", p[idx], p[idx+1], p[idx+2]); 
-    
+
+    printOnePart(&p[idx]);
+    printOnePart(&p[idx+16]);
+    printOnePart(&p[idx+32]);
+    printOnePart(&p[idx+48]);
+}
+
+void printOnePart(u8* buf) {
+    if (buf[4] == 0) return;
+    printf("-------------- partion info ----------------------\n");
+    printf("Bootable: %c, ", buf[0]== 0x80? 'Y': 'N');
+    printf("Start Head: %x, ", buf[1]);
+    printf("Start Sector: %x, ", buf[2] & 0x3f);
+    printf("Start Cliy: %x, ", buf[3] | ((buf[2] & 0xc0)<<2) );
+    printf("Type : %x, ", buf[4]  );
+    printf("End Head: %x, ", buf[5]);
+    printf("End Sector: %x, ", buf[6] & 0x3f);
+    printf("End Cliy: %x, ", buf[7] | ((buf[6] & 0xc0)<<2) );
+    u32 startLba = *(u32*)(&buf[8]);
+    printf("StartLBA: %x, ", startLba );
+    printf("SectorCount: %x \n", *(u32*)(&buf[12]) );
+
+    if ( buf[4]== 5) { // partion type is extended 
+        printPartInfo(0, startLba  );
+    }
 }
 
 void taskHd() {
     initHd();
 
-    while (1)
-    {
-        ;
+    char a[2] = "0";
+    while(1) {
+        write(a, green);
+        a[0] ++;
+        if (a[0] > '5') a[0] = '0';
+        delayMs(1000);
     }
 }
 

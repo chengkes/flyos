@@ -32,4 +32,8 @@ void itos(u32 a, u32 base, char* p){
     *p = 0;
 }
 
-
+int strlen(char* s) {
+    int len =0;
+    while(*s++) ++len;
+    return len;
+}

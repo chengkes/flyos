@@ -71,6 +71,8 @@ void initProtectMode() ;
 void initGate (Gate* p, u16 sel,  u32 offset, u8 attrType, u8 pcount) ;
 void initDescriptor(Descriptor * p, u32 base, u32 limit, u8 attrType, u8 attr);
 
+void syscall(u32 sysCallIdx ,u32 param1, u32 param2);
+
 void assert_fail(char* exp, char* file, int line) ;
 
 #endif

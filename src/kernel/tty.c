@@ -5,9 +5,14 @@
 #include "tty.h"
 #include "lib.h"
 #include "pcb.h"
+#include "main.h"
 
 static Tty tty[TTY_COUNT];
 static volatile int currentTtyIdx;
+
+void write(char* s, Color c) {
+    syscall(SYSCALL_IDX_WRITE, (u32)s, (u32)c);
+}
 
 static void sysWrite(char* s, Color c, PCB* p) {
     dispStr( &tty[p->ttyIdx], s, c);

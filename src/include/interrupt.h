@@ -25,7 +25,8 @@
 // 系统调研中断号
 #define INT_VECTOR_SYSCALL  0x90   
 
-#define SYSCALL_IDX_WRITE      0
+#define SYSCALL_IDX_WRITE         0
+#define SYSCALL_IDX_SENDRECV      1
 
 // 外部中断对应中断号
 #define INT_VECTOR_IRQ0    0x20
