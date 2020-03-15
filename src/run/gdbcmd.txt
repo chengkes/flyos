@@ -2,5 +2,6 @@ target remote localhost:1234
 file run/kernel.bin
 b exceptionHandler
 b osinit
-b hd.c:100
+b readHd
+b hdIrqHandler
 c

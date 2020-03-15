@@ -13,6 +13,9 @@ typedef struct _Message {
 #define PCB_STATE_SENDING 0x02
 #define PCB_STATE_RECVING 0x04
 
+#define SEND    0x02
+#define RECV    0x04
+
 #define PCB_IDX_INTERRUPT   (PCB_SIZE+1)
 #define PCB_IDX_ANY         (PCB_SIZE+2)
 

@@ -42,7 +42,7 @@ static void processB(){
     msg.data = 2; 
     msg.sendPcbIdx = 2; // 本进程idx
     msg.recvPcbIdx = 3; // PROCESSC_IDX
-    sendMsg(&msg);
+    sendRecv(SEND, &msg);
 
     char a[2] = "a";
     while(1) {
@@ -59,7 +59,7 @@ static void processC(){
     Message msg;
     msg.sendPcbIdx = PCB_IDX_ANY;   // 接收谁的消息
     msg.recvPcbIdx = 3;         // 本进程 IDX 
-    receiveMsg(&msg);
+    sendRecv(RECV, &msg);
     assert(msg.type ==1 && msg.data==2);
 
     char a[2] = "5";
@@ -93,8 +93,18 @@ static void processD(){
     // fremove(fid);
 }
 
-void sysSendRecv(u32 sendTo, Message* m, PCB* p) {
+void sendRecv(u32 type, Message* m) {
+    syscall(SYSCALL_IDX_SENDRECV , type, (u32)m);
+}
 
+void sysSendRecv(u32 type, Message* m, PCB* p) {
+    assert(type==SEND || type==RECV);
+
+    if(type==SEND) {
+        sendMsg(m);
+    }else if(type==RECV) {
+        receiveMsg(m);
+    }
 }
 
 void initPcb() { 
@@ -265,5 +275,5 @@ void receiveMsg(Message* m){
     pSelf->state |= PCB_STATE_RECVING;
     assert(pSelf->state != 0);
     schedule();
-    delayMs(1000/CLOCK_COUNTER0_HZ+1); // 等待一个时钟周期，保证进程切换出去 
+    delayMs(1000/CLOCK_COUNTER0_HZ+100); // 等待一个时钟周期，保证进程切换出去 
 }

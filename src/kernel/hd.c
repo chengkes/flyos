@@ -16,9 +16,8 @@ void hdIrqHandler() {
     sendMsg(&msg);   // 发送中断消息 
     printf("hdIrqHandler over...<<<<<<<<<<<<< \n");
 }
-  
+
 void initHd() {
-    printf("hello hard disk!\n");
     u8* hd = (u8*) 0x475; // 获取硬盘个数， BIOS已经将硬盘个数写入内存0x475处
     printf("hd count: %d \n", *hd);
     
@@ -41,7 +40,7 @@ void wait4hdInt(){
     Message msg; 
     msg.sendPcbIdx = PCB_IDX_INTERRUPT ;
     msg.recvPcbIdx = 4;    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
-    receiveMsg(&msg);                   // 收到硬盘中断消息，表明命令执行完毕
+    sendRecv(RECV, &msg);
     printf("wait4hdInt over....>>>>>>>>>>>> \n");
 }
 
@@ -70,11 +69,11 @@ void printHdIdentityInfo(int device) {
     u16 buf[256];
     identityHd(device, buf);
 
-    printf("Sector Count low: %x \n" , buf[60]);
+    printf("Sector Count low: %x , " , buf[60]);
     printf("Sector Count hight: %x \n" , buf[61]);
-    printf("Capability: %x \n" , buf[49]);   // bit9=1，表示支持LBA
+    printf("Capability: %x , " , buf[49]);   // bit9=1，表示支持LBA
     printf("Is LBA Surported? %c \n",  (buf[49] & 0x200)? 'T': 'F' ); 
-    printf("Cmd Set: %x \n" , buf[83]);         // bit10=1，表示支持LBA48
+    printf("Cmd Set: %x , " , buf[83]);         // bit10=1，表示支持LBA48
     printf("Is LBA48 Surported? %c \n", (buf[83] & 0x400)? 'T': 'F' );  
 
     int i;
@@ -85,7 +84,7 @@ void printHdIdentityInfo(int device) {
         s[i] =*p++;
     }
     s[i] = 0;
-    printf("HD SN :%s \n", s); 
+    printf("HD SN :%s , ", s); 
 
     p = (char*)&buf[27];
     for(i=0; i<40; i+=2) {
@@ -105,7 +104,7 @@ void readHd(int device, int sectorNo, int sectorCnt, u16* buf){
 
 void printPartInfo(int device, int sectorNo) {
     u16 buf[256];
-    readHd(0, sectorNo, 1, buf);
+    readHd(device, sectorNo, 1, buf);
     int idx = 0x1be;
     u8* p = (u8*)buf;
 
@@ -117,8 +116,7 @@ void printPartInfo(int device, int sectorNo) {
 
 void printOnePart(u8* buf) {
     if (buf[4] == 0) return;
-    printf("-------------- partion info ----------------------\n");
-    printf("Bootable: %c, ", buf[0]== 0x80? 'Y': 'N');
+    printf("----Bootable: %c, ", buf[0]== 0x80? 'Y': 'N');
     printf("Start Head: %x, ", buf[1]);
     printf("Start Sector: %x, ", buf[2] & 0x3f);
     printf("Start Cliy: %x, ", buf[3] | ((buf[2] & 0xc0)<<2) );

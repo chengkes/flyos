@@ -38,6 +38,6 @@ u32 getTicks(){
 
 // 延迟t毫秒 
 void delayMs(u32 t) {
-    u32 t1 = ticks;
-    while ((ticks - t1 )*1000/CLOCK_COUNTER0_HZ <= t);
+    u32 t1 = getTicks();
+    while ((getTicks() - t1 )*1000/CLOCK_COUNTER0_HZ <= t);
 }

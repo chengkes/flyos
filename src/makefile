@@ -1,6 +1,6 @@
 KenerlEntry=0x30400  # 必须与boot/loader.asm中一致
 
-QEMUTAG= -fda run/os.img -hda run/hd.img -boot a 
+QEMUTAG= -m 1G -fda run/os.img -hda run/hd.img -boot a 
 
 AS=nasm
 CC=gcc
@@ -47,7 +47,7 @@ qemu:run/os.img
 debug:run/os.img
 	qemu-system-i386 -S -s $(QEMUTAG) &
 	sleep 1
-	cgdb --command=run/gdbcmd.txt
+	gdb --command=run/gdbcmd.txt
 run:run/os.img     
 	bochs -q -f run/bochsrc -rc run/debug.txt
 runwin:run/os.img   # for windows
