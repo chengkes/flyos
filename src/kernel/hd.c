@@ -14,7 +14,6 @@ void hdIrqHandler() {
     msg.recvPcbIdx = 4;    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
     inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断
     sendMsg(&msg);   // 发送中断消息 
-    printf("hdIrqHandler over...<<<<<<<<<<<<< \n");
 }
 
 void initHd() {
@@ -41,7 +40,7 @@ void wait4hdInt(){
     msg.sendPcbIdx = PCB_IDX_INTERRUPT ;
     msg.recvPcbIdx = 4;    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
     sendRecv(RECV, &msg);
-    printf("wait4hdInt over....>>>>>>>>>>>> \n");
+    // printf("wait4hdInt over....>>>>>>>>>>>> \n");
 }
 
 void hdCmd(u8 sectorCnt, u32 sectorNo, u32 device, u32 cmd){
@@ -97,7 +96,6 @@ void printHdIdentityInfo(int device) {
 
 // 从硬盘设备device中读取sectorNo开始的 sectorCnt个sector数据到buf
 void readHd(int device, int sectorNo, int sectorCnt, u16* buf){
-
     hdCmd(sectorCnt, sectorNo, device, HD_CMD_READ);
     readPort(PORT_HD_PRIMARY_DATA, buf, sectorCnt*SECTOR_SIZE/2 );
 }
@@ -107,29 +105,33 @@ void printPartInfo(int device, int sectorNo) {
     readHd(device, sectorNo, 1, buf);
     int idx = 0x1be;
     u8* p = (u8*)buf;
-
-    printOnePart(&p[idx]);
-    printOnePart(&p[idx+16]);
-    printOnePart(&p[idx+32]);
-    printOnePart(&p[idx+48]);
+    printf("-----%x----\n", sectorNo);
+    printf("1");
+    printOnePart(&p[idx], sectorNo); 
+    printf("2");
+    printOnePart(&p[idx+16], sectorNo); 
+    printf("3");
+    printOnePart(&p[idx+32], sectorNo); 
+    printf("4");
+    printOnePart(&p[idx+48], sectorNo);
 }
 
-void printOnePart(u8* buf) {
+void printOnePart(u8* buf, int lba) {
     if (buf[4] == 0) return;
-    printf("----Bootable: %c, ", buf[0]== 0x80? 'Y': 'N');
-    printf("Start Head: %x, ", buf[1]);
-    printf("Start Sector: %x, ", buf[2] & 0x3f);
-    printf("Start Cliy: %x, ", buf[3] | ((buf[2] & 0xc0)<<2) );
-    printf("Type : %x, ", buf[4]  );
-    printf("End Head: %x, ", buf[5]);
+    printf("--Bootable:%c, ", buf[0]== 0x80? 'Y': 'N');
+    printf("Start Head:%x, ", buf[1]);
+    printf("Start Sector:%x, ", buf[2] & 0x3f);
+    printf("Start Cliy:%x, ", buf[3] | ((buf[2] & 0xc0)<<2) );
+    printf("Type: %x, ", buf[4]  );
+    printf("End Head:%x, ", buf[5]);
     printf("End Sector: %x, ", buf[6] & 0x3f);
-    printf("End Cliy: %x, ", buf[7] | ((buf[6] & 0xc0)<<2) );
+    printf("End Cliy:%x, ", buf[7] | ((buf[6] & 0xc0)<<2) );
     u32 startLba = *(u32*)(&buf[8]);
     printf("StartLBA: %x, ", startLba );
     printf("SectorCount: %x \n", *(u32*)(&buf[12]) );
 
     if ( buf[4]== 5) { // partion type is extended 
-        printPartInfo(0, startLba  );
+        printPartInfo(0, startLba+lba);
     }
 }
 

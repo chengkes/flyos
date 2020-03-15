@@ -1,6 +1,6 @@
 KenerlEntry=0x30400  # 必须与boot/loader.asm中一致
 
-QEMUTAG= -m 1G -fda run/os.img -hda run/hd.img -boot a 
+QEMUTAG= -m 64M -fda run/os.img -hda run/hd.img -boot a 
 
 AS=nasm
 CC=gcc

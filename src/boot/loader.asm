@@ -28,7 +28,6 @@ LABEL_START:
 
     ; 获取内存信息
     call    getMemoryInfo 
-
     ; todo: 设置分页 setupPagging  
 
     ; 跳入保护模式
