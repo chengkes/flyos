@@ -22,3 +22,4 @@ void assert_fail(char* exp, char* file, int line) {
     while(1);
     asm volatile ("ud2");
 }
+

@@ -36,11 +36,11 @@ static void processA(){
 
 // 测试进程B ， 发送消息
 static void processB(){
+    printf( "currentPCbIdx %d \n", getCurrentPcbIdx());
     // 测试 IPC Send msg
     Message msg;
     msg.type = 1; 
     msg.data = 2; 
-    msg.sendPcbIdx = 2; // 本进程idx
     msg.recvPcbIdx = 3; // PROCESSC_IDX
     sendRecv(SEND, &msg);
 
@@ -55,10 +55,10 @@ static void processB(){
 
 // 测试进程C， 接收消息
 static void processC(){
+    printf( "currentPCbIdx %d \n", getCurrentPcbIdx());
     // 测试 IPC recv msg
     Message msg;
-    msg.sendPcbIdx = PCB_IDX_ANY;   // 接收谁的消息
-    msg.recvPcbIdx = 3;         // 本进程 IDX 
+    msg.sendPcbIdx = PCB_IDX_ANY;   // 接收谁的消息 
     sendRecv(RECV, &msg);
     assert(msg.type ==1 && msg.data==2);
 
@@ -73,7 +73,7 @@ static void processC(){
 
 // 测试进程D， 文件系统
 static void processD(){
-
+    // getCurrentPcbIdx()
     // test write file
     char filename[] = "test.txt";
     // u32 fid = fopen(filename);
@@ -118,14 +118,16 @@ void initPcb() {
     addPCB((u32)processA, 3, 0, USER_PROCESS);      // 测试进程
     addPCB((u32)processB, 2, 1, USER_PROCESS);      // 测试进程
     addPCB((u32)processC, 5, 2, USER_PROCESS);      // 测试进程
-    addPCB((u32)taskHd, 10, 0, SYS_TASK);
+    addPCB((u32)taskHd, 11, 0, SYS_TASK);
     addPCB((u32)processD, 4, 0, USER_PROCESS);      // 测试进程
 } 
 
-
-
 PCB* getCurrentPcb(){
     return currentPcb;
+}
+
+u32 getCurrentPcbIdx() {
+    return  currentPcb - (PCB*)pcbs;
 }
 
 PCB* getPcbByIdx(u32 idx) {
@@ -194,32 +196,53 @@ void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
     pcbCount++;
 }
 
+// 向进程pid发送中断消息
+void sendIntMsgTo(u32 pid) {
+    assert(pid>=0 && pid<pcbCount);
+    PCB *pDest = getPcbByIdx(pid); 
+    if ( pDest->state & PCB_STATE_RECV_INT  ){  // pDest is ready
+        pDest->intMsgCount = 0;
+        // ublock pDest
+        pDest->state &= ~PCB_STATE_RECV_INT;
+        assert( pDest->state == 0 );
+    }else {  
+        pDest->intMsgCount = 1;
+    }
+}
+
+
+// 接收中断消息
+void recvIntMsg() {
+    PCB* p = getCurrentPcb();
+    if (p->intMsgCount == 0) { // 没有消息到达，等待
+        // block current pcb
+         p->state |= PCB_STATE_RECV_INT;
+         assert(p->state != 0);
+         schedule();
+         delayMs(1000 / CLOCK_COUNTER0_HZ + 1); // 等待一个时钟周期，保证进程切换出去
+    }else {
+        p->intMsgCount = 0;
+    }
+}
+
 // IPC 发送消息
 void sendMsg(Message* m){
-    assert(m->sendPcbIdx != m->recvPcbIdx);
     assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount);
-    assert((m->sendPcbIdx>=0 && m->sendPcbIdx<pcbCount) || m->sendPcbIdx==PCB_IDX_INTERRUPT );
 
-    PCB *pDest = getPcbByIdx(m->recvPcbIdx); 
+    PCB *pDest = getPcbByIdx(m->recvPcbIdx);
+    m->sendPcbIdx = getCurrentPcbIdx();
+    assert(m->sendPcbIdx != m->recvPcbIdx);
 
     // is pDest ready for recving msg ?
-    if (pDest->state & PCB_STATE_RECVING && 
+    if ( (pDest->state & PCB_STATE_RECVING) && 
             (pDest->pMsg->sendPcbIdx == PCB_IDX_ANY 
             || pDest->pMsg->sendPcbIdx == m->sendPcbIdx) ) { // ready, send msg to pDest
-        if (m->sendPcbIdx==PCB_IDX_INTERRUPT) { 
-             pDest->intMsgCount = 0;
-        }
         memCpy ((u8*) pDest->pMsg, (u8*)m, sizeof(Message));
         // unblock pDest for receiving 
         pDest->state &= ~PCB_STATE_RECVING;
         assert(pDest->state == 0);
     }else {   // not ready, add msg to msg-deque 
-        if (m->sendPcbIdx==PCB_IDX_INTERRUPT) { // 中断发送的消息
-            pDest->intMsgCount = 1;
-            return;
-        }
-
-        PCB *pSelf = getPcbByIdx(m->sendPcbIdx);
+        PCB *pSelf = getCurrentPcb();  
         pSelf->pMsg = m;
         pSelf->recvDeque = 0;
         PCB*  last = pDest;
@@ -230,28 +253,20 @@ void sendMsg(Message* m){
 
         // block pSrc for Sending
         pSelf->state |= PCB_STATE_SENDING;
-        pSelf->ticks = 0;
         assert(pSelf->state != 0);
         schedule();
-        delayMs(1000/CLOCK_COUNTER0_HZ); // 等待一个时钟周期，保证进程切换出去 
+        delayMs(1000/CLOCK_COUNTER0_HZ+1); // 等待一个时钟周期，保证进程切换出去 
     }
 } 
 
 // IPC 接收消息
 void receiveMsg(Message* m){
+    m->recvPcbIdx = getCurrentPcbIdx();
     assert(m->sendPcbIdx != m->recvPcbIdx);
     assert( (m->sendPcbIdx>=0 && m->sendPcbIdx<pcbCount) 
-        || m->sendPcbIdx == PCB_IDX_INTERRUPT ||  m->sendPcbIdx == PCB_IDX_ANY );
-    assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount );
+        ||  m->sendPcbIdx == PCB_IDX_ANY );
 
-    PCB *pSelf = getPcbByIdx(m->recvPcbIdx);
-    if (pSelf->intMsgCount > 0 && 
-        (m->sendPcbIdx == PCB_IDX_INTERRUPT ||  m->sendPcbIdx == PCB_IDX_ANY )) {  // 接收中断消息
-        m->sendPcbIdx = PCB_IDX_INTERRUPT;
-        pSelf->intMsgCount = 0;
-        return;
-    }
-
+    PCB *pSelf = getCurrentPcb();
     // search the recvDeque 
     PCB* p = pSelf;
     while (p->recvDeque!=0) {
@@ -272,9 +287,8 @@ void receiveMsg(Message* m){
 
     // 没有接收到消息, block本进程，等待消息
     pSelf->pMsg = m;
-    pSelf->ticks = 0; 
     pSelf->state |= PCB_STATE_RECVING;
     assert(pSelf->state != 0);
     schedule();
-    delayMs(1000/CLOCK_COUNTER0_HZ+100); // 等待一个时钟周期，保证进程切换出去 
+    delayMs(1000/CLOCK_COUNTER0_HZ+1); // 等待一个时钟周期，保证进程切换出去 
 }

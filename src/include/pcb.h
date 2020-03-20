@@ -12,6 +12,8 @@ typedef struct _Message {
 
 #define PCB_STATE_SENDING 0x02
 #define PCB_STATE_RECVING 0x04
+#define PCB_STATE_RECV_INT 0x08
+
 
 #define SEND    0x02
 #define RECV    0x04
@@ -75,5 +77,9 @@ void schedule();
 PCB* getPcbByIdx(u32 idx);
 void receiveMsg(Message*);
 void sendMsg(Message*);
+void sendIntMsgTo(u32 pid);
+void sendRecv(u32 type, Message* m);
+void recvIntMsg();
+u32 getCurrentPcbIdx();
 
 #endif

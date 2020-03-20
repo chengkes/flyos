@@ -7,21 +7,25 @@
 #include "clock.h"
 #include "main.h"
 
+static u8 hdStatus ;
+static volatile u8 hdIntCount ;
+
+static void printHdIdentityInfo(int device) ;
+static void printPartInfo(int device, int sectorNo);
+static void printOnePart(u8* buf, int lba);
+
 // 硬盘中断处理程序
-void hdIrqHandler() {
-    Message msg; 
-    msg.sendPcbIdx = PCB_IDX_INTERRUPT ;
-    msg.recvPcbIdx = 4;    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
-    inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断
-    sendMsg(&msg);   // 发送中断消息 
+static void hdIrqHandler() {
+    hdStatus = inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
+    sendIntMsgTo(4);    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
 }
 
-void initHd() {
-    u8* hd = (u8*) 0x475; // 获取硬盘个数， BIOS已经将硬盘个数写入内存0x475处
-    printf("hd count: %d \n", *hd);
-    
+static void initHd() {
+    hdIntCount = 0;
     putIrqHandler(IRQ_IDX_HARDDISK, hdIrqHandler); // 指定硬盘中断处理程序
     
+    u8* hd = (u8*) 0x475; // 获取硬盘个数， BIOS已经将硬盘个数写入内存0x475处
+    printf("hd count: %d \n", *hd);
     printHdIdentityInfo(0);   // 获取硬盘信息并显示 
     printPartInfo(0, 0);         // 获取硬盘分区信息
 }
@@ -34,15 +38,6 @@ void wait4hdReady() {
     }
 }
 
-// 等待硬盘中断发生
-void wait4hdInt(){
-    Message msg; 
-    msg.sendPcbIdx = PCB_IDX_INTERRUPT ;
-    msg.recvPcbIdx = 4;    // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
-    sendRecv(RECV, &msg);
-    // printf("wait4hdInt over....>>>>>>>>>>>> \n");
-}
-
 void hdCmd(u8 sectorCnt, u32 sectorNo, u32 device, u32 cmd){
     wait4hdReady();
     outByte(0, PORT_HD_PRIMARY_FEATURES);
@@ -53,9 +48,8 @@ void hdCmd(u8 sectorCnt, u32 sectorNo, u32 device, u32 cmd){
     outByte((sectorNo>>16) & 0xff, PORT_HD_PRIMARY_LBA_HIGH);
     outByte( MAKE_DEVICE(1, device, (sectorNo>>24) & 0x0F ), PORT_HD_PRIMARY_DEVICE);
     outByte(cmd, PORT_HD_PRIMARY_COMMAND);
-    wait4hdInt();
+    recvIntMsg();   // 等待硬盘中断发生
 }
-
 
 // 像硬盘发送identity命令，获取硬盘参数，保存到buf中，数据容量为256个word
 void identityHd(int device, u16* buf) {
