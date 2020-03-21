@@ -7,8 +7,7 @@
 #include "clock.h"
 #include "main.h"
 
-static u8 hdStatus ;
-static volatile u8 hdIntCount ;
+static volatile u8 hdStatus ;
 
 static void printHdIdentityInfo(int device) ;
 static void printPartInfo(int device, int sectorNo);
@@ -21,13 +20,22 @@ static void hdIrqHandler() {
 }
 
 static void initHd() {
-    hdIntCount = 0;
     putIrqHandler(IRQ_IDX_HARDDISK, hdIrqHandler); // 指定硬盘中断处理程序
     
     u8* hd = (u8*) 0x475; // 获取硬盘个数， BIOS已经将硬盘个数写入内存0x475处
-    printf("hd count: %d \n", *hd);
-    printHdIdentityInfo(0);   // 获取硬盘信息并显示 
-    printPartInfo(0, 0);         // 获取硬盘分区信息
+    // printf("hd count: %d \n", *hd);
+    // printHdIdentityInfo(0);      // 获取硬盘信息并显示 
+    // printPartInfo(0, 0);         // 获取硬盘分区信息
+
+    // test writeHd and readHd, use shell command xxd to verify
+    // u16 buf[512];
+    // memSet((u8*)buf, 7, sizeof(buf));
+    // writeHd(0, 0, sizeof(buf)/SECTOR_SIZE, buf);
+    // memSet((u8*)buf, 0, sizeof(buf));
+    // readHd(0, 0, sizeof(buf)/SECTOR_SIZE, buf);
+    // for(int i=0;i<sizeof(buf)/2; i++) {
+    //     printf("%x", buf[i]);
+    // }
 }
 
 // 等待硬盘操作完成
@@ -48,13 +56,14 @@ void hdCmd(u8 sectorCnt, u32 sectorNo, u32 device, u32 cmd){
     outByte((sectorNo>>16) & 0xff, PORT_HD_PRIMARY_LBA_HIGH);
     outByte( MAKE_DEVICE(1, device, (sectorNo>>24) & 0x0F ), PORT_HD_PRIMARY_DEVICE);
     outByte(cmd, PORT_HD_PRIMARY_COMMAND);
-    recvIntMsg();   // 等待硬盘中断发生
+    
 }
 
 // 像硬盘发送identity命令，获取硬盘参数，保存到buf中，数据容量为256个word
 void identityHd(int device, u16* buf) {
     // 像硬盘发生IDENTIFY命令，获取硬盘参数
     hdCmd(0, 0, 0, HD_CMD_IDENTIFY); 
+    recvIntMsg();   // 等待硬盘中断发生
     readPort(PORT_HD_PRIMARY_DATA, buf, 256);
 }
 
@@ -91,7 +100,21 @@ void printHdIdentityInfo(int device) {
 // 从硬盘设备device中读取sectorNo开始的 sectorCnt个sector数据到buf
 void readHd(int device, int sectorNo, int sectorCnt, u16* buf){
     hdCmd(sectorCnt, sectorNo, device, HD_CMD_READ);
-    readPort(PORT_HD_PRIMARY_DATA, buf, sectorCnt*SECTOR_SIZE/2 );
+    while(sectorCnt--) {
+        recvIntMsg();   // 等待硬盘中断发生
+        readPort(PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE/2 );
+        buf += SECTOR_SIZE / 2;
+    }
+}
+
+void writeHd(int device, int sectorNo, int sectorCnt, u16* buf) {
+    hdCmd(sectorCnt, sectorNo, device, HD_CMD_WRITE);
+    while (sectorCnt--) {
+        wait4hdReady();
+        writePort(PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
+        recvIntMsg(); // 等待硬盘中断发生
+        // buf += SECTOR_SIZE / 2;
+    }
 }
 
 void printPartInfo(int device, int sectorNo) {
@@ -132,6 +155,8 @@ void printOnePart(u8* buf, int lba) {
 void taskHd() {
     initHd();
 
+
+
     char a[2] = "0";
     while(1) {
         write(a, green);
@@ -140,5 +165,3 @@ void taskHd() {
         delayMs(1000);
     }
 }
-
-

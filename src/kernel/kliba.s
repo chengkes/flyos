@@ -3,6 +3,7 @@
 global inByte
 global outByte 
 global readPort
+global writePort
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 写端口
@@ -40,6 +41,22 @@ readPort:
     mov     edi, [esp+12+8]  ; buf
     mov     ecx, [esp+12+12] ; size
     rep     insw
+    pop     edx
+    pop     ecx
+    pop     edi
+    ret
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 以Word形式写端口
+; void writePort(u16 port, u16* buf,u32 size)
+writePort:
+    push    edi
+    push    ecx
+    push    edx
+    mov     edx, [esp+12+4]  ; port
+    mov     esi, [esp+12+8]  ; buf
+    mov     ecx, [esp+12+12] ; size
+    rep     outsw
     pop     edx
     pop     ecx
     pop     edi

@@ -39,6 +39,8 @@ void taskFs() {
 }
 
 void mkfs() {
+    //1、 准备超级块并写入磁盘
+
     SuperBlock sb ;
     sb.type = FS_TYPE;
 
@@ -48,6 +50,10 @@ void mkfs() {
     // sb.inodeSectorCnt = 
     
 
+    //2、写入inode map
+
+    //3. 写入sector map
+    
 
 } 
 

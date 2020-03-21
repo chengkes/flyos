@@ -98,6 +98,7 @@
 
 #define HD_CMD_IDENTIFY		0xEC
 #define HD_CMD_READ			0x20
+#define HD_CMD_WRITE		0x30
 
 #define SECTOR_SIZE 	512
 
