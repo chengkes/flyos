@@ -41,7 +41,8 @@
 #define IRQ_IDX_FLOPPY         6
 #define IRQ_IDX_PRINTER        7
 
-#define IRQ_IDX_HARDDISK       14       // AT WINCHESTERs
+#define IRQ_IDX_HARDDISK0       14       // AT WINCHESTERs
+#define IRQ_IDX_HARDDISK1       15       // AT WINCHESTERs
 
 void putIrqHandler(u8 no, void* handler);
 void putSyscall(u8 no, void* handler);

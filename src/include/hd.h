@@ -8,7 +8,8 @@
 #define PORT_HD_SECONDARY_LBA_MID       0x174
 #define PORT_HD_SECONDARY_LBA_HIGH      0x175 
 
-/*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
+/*	PORT_HD_SECONDARY_DEVICEs
+	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
 	+-----+-----+-----+-----+-----+-----+-----+-----+
 	|  1  |  L  |  1  | DRV | HS3 | HS2 | HS1 | HS0 |
 	+-----+-----+-----+-----+-----+-----+-----+-----+
@@ -26,7 +27,8 @@
 */
 #define PORT_HD_SECONDARY_DEVICE        0x176
 
-/* 	Any pending interrupt is cleared whenever this register is read.
+/* PORT_HD_SECONDARY_STATUS
+	Any pending interrupt is cleared whenever this register is read.
 	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
 	+-----+-----+-----+-----+-----+-----+-----+-----+
 	| BSY | DRDY|DF/SE|  #  | DRQ |     |     | ERR |
@@ -42,7 +44,8 @@
 	   `--------------------------------------------- 7. Busy. If BSY=1, no other bits in the register are valid.
 */
 #define PORT_HD_SECONDARY_STATUS        0x177   
-/*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
+/*	PORT_HD_SECONDARY_CONTROL
+	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
 	+-----+-----+-----+-----+-----+-----+-----+-----+
 	| HOB |  -  |  -  |  -  |  -  |SRST |-IEN |  0  |
 	+-----+-----+-----+-----+-----+-----+-----+-----+
@@ -61,9 +64,9 @@
 	   `--------------------------------------------- HOB (High Order Byte)
 	                                                    - defined by 48-bit Address feature set.
 */ 
-#define PORT_HD_SECONDARY_CONTROL           0x376
+#define PORT_HD_SECONDARY_CONTROL       0x376
 #define PORT_HD_SECONDARY_ERROR         PORT_HD_SECONDARY_FEATURES
-/*
+/*   PORT_HD_SECONDARY_COMMAND
 	+--------+---------------------------------+-----------------+
 	| Command| Command Description             | Parameters Used |
 	| Code   |                                 | PC SC SN CY DH  |
@@ -100,9 +103,11 @@
 #define HD_CMD_READ			0x20
 #define HD_CMD_WRITE		0x30
 
+#define HD_STATUS_BSY	0x80
+
 #define SECTOR_SIZE 	512
 
-#define MAKE_DEVICE(lba,device,lbaHigh) (0xA0 | ((1 & (lba))<<6) | ((1 & (device))<<4) | ((lbaHigh) & 0x0f))
+#define MAKE_DEVICE(lba, device, lbaHigh) (0xA0 | ((1 & (lba)) << 6) | ((1 & (device)) << 4) | ((lbaHigh)&0x0f))
 
 void taskHd();
 #endif

@@ -36,7 +36,7 @@ void init8259a(){
     outByte(0x01, PORT_8259A_SLAVE2);
 
     outByte(0xF8, PORT_8259A_MASTER2);     // 写OCW1, 主片打开键盘、时钟,级联
-    outByte(0xBF, PORT_8259A_SLAVE2);      // 写OCW1, 从片打开硬盘
+    outByte(0x3F, PORT_8259A_SLAVE2);      // 写OCW1, 从片打开硬盘(14,15)
 }
 
 void putIrqHandler(u8 no, void* handler){
