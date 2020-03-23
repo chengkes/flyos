@@ -257,7 +257,7 @@ void sprintf(char* buf, char *fmt, ...) {
 
 void printf(char *fmt, ...) {
     u32 addr = (int)(&fmt) + 4;
-    char buf[512];
+    char buf[1024];
     vsprintf(buf, fmt, addr);
     write(buf, white);
 }

@@ -109,5 +109,32 @@
 
 #define MAKE_DEVICE(lba, device, lbaHigh) (0xA0 | ((1 & (lba)) << 6) | ((1 & (device)) << 4) | ((lbaHigh)&0x0f))
 
+// 硬盘分区信息
+typedef struct _PartInfo
+{
+    u32 startSector;
+    u32 sectorCnt;
+    u16 type;
+    u8 isBootable;    
+} PartInfo;
+
+#define MAX_PART_COUNT  16 		// 最多支持分区数目
+// 硬盘信息
+typedef struct _HdInfo
+{
+    u32 sectorCnt;
+    u16 capability;
+    u16 cmdSet;
+    char sn[21];
+    char model[41];
+	u8 partCnt;
+	PartInfo partInfo[MAX_PART_COUNT];
+} HdInfo;
+
+#define MAX_HD_COUNT 4  // 最大支持硬盘个数
+extern HdInfo allHd[MAX_HD_COUNT];
+
 void taskHd();
+void writeHd(u8 device, u8 chanel, int sectorNo, int sectorCnt, u16 *buf);
+void readHd(u8 device, u8 chanel, int sectorNo, int sectorCnt, u16 *buf);
 #endif

@@ -8,25 +8,27 @@
 #include "main.h"
 #include "types.h"
 
-static volatile u8 hd0Status;
-static volatile u8 hd1Status;
+static u8 hdStatus[2]; // 支持2个硬盘通道
+u8 hdCount;
+HdInfo allHd[MAX_HD_COUNT];
 
-static void printHdIdentityInfo(u8 device, u8 chanel);
-static void printPartInfo(u8 device, u8 chanel, int sectorNo);
-static void printOnePart(u8 device, u8 chanel, u8 *buf, int lba);
+void printHdInfo(HdInfo *p);
+void getHdInfo(u8 device, u8 chanel, HdInfo *p);
+void getOnePartInfo(u8 device, u8 chanel, u8 *buf, int lba, HdInfo *p);
+void getPartInfo(u8 device, u8 chanel, int sectorNo, HdInfo *p);
 
-// 硬盘ATA0,中断处理程序
+// 硬盘ATA0,中断处理程序 int14
 static void hdIrqHandler0()
 {
-    hd0Status = inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
-    sendIntMsgTo(4);                            // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
+    hdStatus[0] = inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
+    sendIntMsgTo(4);                              // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
 }
 
-// 硬盘ATA1,中断处理程序
+// 硬盘ATA1,中断处理程序 int15
 static void hdIrqHandler1()
 {
-    hd1Status = inByte(PORT_HD_SECONDARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
-    sendIntMsgTo(4);                              // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
+    hdStatus[1] = inByte(PORT_HD_SECONDARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
+    sendIntMsgTo(4);                                // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
 }
 
 static void initHd()
@@ -34,10 +36,15 @@ static void initHd()
     putIrqHandler(IRQ_IDX_HARDDISK0, hdIrqHandler0); // 指定硬盘中断处理程序
     putIrqHandler(IRQ_IDX_HARDDISK1, hdIrqHandler1); // 指定硬盘中断处理程序
 
-    u8 *hd = (u8 *)0x475; // 获取硬盘个数， BIOS已经将硬盘个数写入内存0x475处
-    printf("hd count: %d \n", *hd);
-    printHdIdentityInfo(0, 0); // 获取硬盘信息并显示
-    printPartInfo(0, 0, 0);    // 获取硬盘分区信息
+    hdCount = *((u8 *)0x475); // 硬盘个数， BIOS已经将硬盘个数写入内存0x475处
+    printf("hd count: %d \n", hdCount);
+    for(int i = 0; i<hdCount; ++i) {
+        HdInfo *p = &allHd[i];
+        p->partCnt = 0;
+        getHdInfo( i&1, i>>1, p);
+        getPartInfo(i&1, i>>1, 0, p);
+        printHdInfo(p); // 打印硬盘信息
+    } 
 
     // test writeHd and readHd, use shell command xxd to verify
     // u16 buf[512];
@@ -76,46 +83,55 @@ void hdCmd(u8 device, u8 chanel, u8 sectorCnt, u32 sectorNo, u32 cmd)
     outByte(cmd, chanel ? PORT_HD_SECONDARY_COMMAND : PORT_HD_PRIMARY_COMMAND);
 }
 
-// 像硬盘发送identity命令，获取硬盘参数，保存到buf中，数据容量为256个word
-void identityHd(u8 device, u8 chanel, u16 *buf)
+// 获取硬盘信息
+void getHdInfo(u8 device, u8 chanel, HdInfo *p)
 {
     // 像硬盘发生IDENTIFY命令，获取硬盘参数
     hdCmd(device, chanel, 0, 0, HD_CMD_IDENTIFY);
     recvIntMsg(); // 等待硬盘中断发生
-    readPort(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
-}
-
-void printHdIdentityInfo(u8 device, u8 chanel)
-{
     u16 buf[256];
-    identityHd(device, chanel, buf);
+    readPort(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
 
-    printf("Sector Count low: %x , ", buf[60]);
-    printf("Sector Count hight: %x \n", buf[61]);
-    printf("Capability: %x , ", buf[49]); // bit9=1，表示支持LBA
-    printf("Is LBA Surported? %c \n", (buf[49] & 0x200) ? 'T' : 'F');
-    printf("Cmd Set: %x , ", buf[83]); // bit10=1，表示支持LBA48
-    printf("Is LBA48 Surported? %c \n", (buf[83] & 0x400) ? 'T' : 'F');
+    p->sectorCnt = (buf[61] << 16) | buf[60];
+    p->capability = buf[49]; // bit9=1，表示支持LBAs
+    p->cmdSet = buf[83];     // bit10=1，表示支持LBA48
 
     int i;
-    char s[48] = "";
-    char *p = (char *)&buf[10];
+    char *s = p->sn;
+    char *b = (char *)&buf[10];
     for (i = 0; i < 20; i += 2)
     {
-        s[i + 1] = *p++;
-        s[i] = *p++;
+        s[i + 1] = *b++;
+        s[i] = *b++;
     }
     s[i] = 0;
-    printf("HD SN :%s , ", s);
 
-    p = (char *)&buf[27];
+    s = p->model;
+    b = (char *)&buf[27];
     for (i = 0; i < 40; i += 2)
     {
-        s[i + 1] = *p++;
-        s[i] = *p++;
+        s[i + 1] = *b++;
+        s[i] = *b++;
     }
     s[i] = 0;
-    printf("HD MODEL :%s \n", s);
+}
+
+void printHdInfo(HdInfo *p)
+{
+    printf("Sector Count : %x , ", p->sectorCnt);
+    printf("Capability: %x , ", p->capability); // bit9=1，表示支持LBA
+    printf("Is LBA Surported? %c \n", (p->capability & 0x200) ? 'T' : 'F');
+    printf("Cmd Set: %x , ", p->cmdSet); // bit10=1，表示支持LBA48
+    printf("Is LBA48 Surported? %c \n", (p->cmdSet & 0x400) ? 'T' : 'F');
+    printf("HD SN :%s , ", p->sn);
+    printf("HD MODEL :%s \n", p->model);
+
+    printf("part count: %d \n", p->partCnt);
+    for (int i = 0; i < p->partCnt; ++i)
+    {
+        PartInfo *pt = &p->partInfo[i];
+        printf("%d -- boot:%x, start: %d, count:%d, type:%x \n",i, pt->isBootable, pt->startSector, pt->sectorCnt, pt->type);
+    }
 }
 
 // 从硬盘设备device中读取sectorNo开始的 sectorCnt个sector数据到buf
@@ -142,45 +158,43 @@ void writeHd(u8 device, u8 chanel, int sectorNo, int sectorCnt, u16 *buf)
     }
 }
 
-void printPartInfo(u8 device, u8 chanel, int sectorNo)
+// 获取硬盘分区信息
+void getPartInfo(u8 device, u8 chanel, int sectorNo, HdInfo *p)
 {
     u16 buf[256];
     readHd(device, chanel, sectorNo, 1, buf);
     int idx = 0x1be;
-    u8 *p = (u8 *)buf;
-    printf("-----%x----\n", sectorNo);
-    printf("1");
-    printOnePart(device, chanel, &p[idx], sectorNo);
-    printf("2");
-    printOnePart(device, chanel, &p[idx + 16], sectorNo);
-    printf("3");
-    printOnePart(device, chanel, &p[idx + 32], sectorNo);
-    printf("4");
-    printOnePart(device, chanel, &p[idx + 48], sectorNo);
+    u8 *b = (u8 *)buf;
+
+    getOnePartInfo(device, chanel, &b[idx], sectorNo, p);
+    getOnePartInfo(device, chanel, &b[idx + 16], sectorNo, p);
+    getOnePartInfo(device, chanel, &b[idx + 32], sectorNo, p);
+    getOnePartInfo(device, chanel, &b[idx + 48], sectorNo, p);
 }
 
-void printOnePart(u8 device, u8 chanel, u8 *buf, int lba)
+void getOnePartInfo(u8 device, u8 chanel, u8 *buf, int lba, HdInfo *p)
 {
     if (buf[4] == 0)
     {
         return;
     }
-    printf("--Bootable:%c, ", buf[0] == 0x80 ? 'Y' : 'N');
-    printf("Start Head:%x, ", buf[1]);
-    printf("Start Sector:%x, ", buf[2] & 0x3f);
-    printf("Start Cliy:%x, ", buf[3] | ((buf[2] & 0xc0) << 2));
-    printf("Type: %x, ", buf[4]);
-    printf("End Head:%x, ", buf[5]);
-    printf("End Sector: %x, ", buf[6] & 0x3f);
-    printf("End Cliy:%x, ", buf[7] | ((buf[6] & 0xc0) << 2));
-    u32 startLba = *(u32 *)(&buf[8]);
-    printf("StartLBA: %x, ", startLba);
-    printf("SectorCount: %x \n", *(u32 *)(&buf[12]));
-
+    assert(p->partCnt < MAX_PART_COUNT);
+    PartInfo *pt = &(p->partInfo[(p->partCnt)++]);
+    pt->isBootable = buf[0];
+    pt->type = buf[4];
+    pt->startSector = *(u32 *)(&buf[8]) + lba;
+    pt->sectorCnt = *(u32 *)(&buf[12]);
     if (buf[4] == 5) // partion type is extendeds
     {
-        printPartInfo(device, chanel, startLba + lba);
+        getPartInfo(device, chanel, pt->startSector, p);
     }
+
+    // printf("Start Head:%x, ", buf[1]);
+    // printf("Start Sector:%x, ", buf[2] & 0x3f);
+    // printf("Start Cliy:%x, ", buf[3] | ((buf[2] & 0xc0) << 2));
+    // printf("End Head:%x, ", buf[5]);
+    // printf("End Sector: %x, ", buf[6] & 0x3f);
+    // printf("End Cliy:%x, ", buf[7] | ((buf[6] & 0xc0) << 2));
 }
 
 void taskHd()

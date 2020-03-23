@@ -8,6 +8,7 @@
 #include "lib.h"
 #include "hd.h"
 #include "interrupt.h"
+#include "fs.h"
 
 // #define PCB_IDX_A  1
 // #define PCB_IDX_B  2
@@ -75,7 +76,7 @@ static void processC(){
 static void processD(){
     // getCurrentPcbIdx()
     // test write file
-    char filename[] = "test.txt";
+    // char filename[] = "test.txt";
     // u32 fid = fopen(filename);
     // fwrite(fid, "this is a test");
     // fclose(fid);
@@ -120,6 +121,8 @@ void initPcb() {
     addPCB((u32)processC, 5, 2, USER_PROCESS);      // 测试进程
     addPCB((u32)taskHd, 11, 0, SYS_TASK);
     addPCB((u32)processD, 4, 0, USER_PROCESS);      // 测试进程
+    addPCB((u32)taskFs, 12, 0, SYS_TASK);       
+    
 } 
 
 PCB* getCurrentPcb(){
