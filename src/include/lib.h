@@ -12,7 +12,9 @@ void memCpy(u8* to, u8* from, u32 size);
 
 u8 inByte(u16 port);
 void readPort(u16 port, u16* buf,u32 size);
-void writePort(u16 port, u16* buf,u32 size);
+// size: 以字为单位
+void writePort(u16 port, u16* buf,u32 size); 
+void writePortInByte(u16 port, u8* buf,u32 size);
 void outByte(u8 data, u16 port);
 // -------------------------------------
 

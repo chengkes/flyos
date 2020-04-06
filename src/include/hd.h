@@ -104,6 +104,7 @@
 #define HD_CMD_WRITE		0x30
 
 #define HD_STATUS_BSY	0x80
+#define HD_STATUS_DRQ	0x08
 
 #define SECTOR_SIZE 	512
 
@@ -122,6 +123,8 @@ typedef struct _PartInfo
 // 硬盘信息
 typedef struct _HdInfo
 {
+	u8 device;
+	u8 chanel;
     u32 sectorCnt;
     u16 capability;
     u16 cmdSet;
@@ -131,10 +134,7 @@ typedef struct _HdInfo
 	PartInfo partInfo[MAX_PART_COUNT];
 } HdInfo;
 
-#define MAX_HD_COUNT 4  // 最大支持硬盘个数
-extern HdInfo allHd[MAX_HD_COUNT];
-
 void taskHd();
-void writeHd(u8 device, u8 chanel, int sectorNo, int sectorCnt, u16 *buf);
-void readHd(u8 device, u8 chanel, int sectorNo, int sectorCnt, u16 *buf);
+int identifyHd(HdInfo* hd);
+int readHd(HdInfo* hd, u16* buf, u32 sector, u32 size);
 #endif

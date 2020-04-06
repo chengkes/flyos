@@ -115,7 +115,7 @@ void initPcb() {
 
     putSyscall(SYSCALL_IDX_SENDRECV, sysSendRecv);
     
-    addPCB((u32)taskTty, 10, 0, SYS_TASK);
+    addPCB((u32)taskTty, 10, 0, SYS_TASK);     
     addPCB((u32)processA, 3, 0, USER_PROCESS);      // 测试进程
     addPCB((u32)processB, 2, 1, USER_PROCESS);      // 测试进程
     addPCB((u32)processC, 5, 2, USER_PROCESS);      // 测试进程

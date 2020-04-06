@@ -8,18 +8,29 @@ typedef struct _Message {
     u32 recvPcbIdx;       // 消息接收方进程idx
     u32 type;       // 消息类型
     u32 data;       // 发送数据
+    u32 param1;
+    u32 param2;
+    u32 param3;
 } Message;
 
 #define PCB_STATE_SENDING 0x02
 #define PCB_STATE_RECVING 0x04
 #define PCB_STATE_RECV_INT 0x08
 
-
 #define SEND    0x02
 #define RECV    0x04
 
 #define PCB_IDX_INTERRUPT   (PCB_SIZE+1)
 #define PCB_IDX_ANY         (PCB_SIZE+2)
+   
+// 参见 PCB.c中initPcb里进程顺序
+#define PCB_IDX_TTY                 0
+#define PCB_IDX_processA            1
+#define PCB_IDX_processB            2
+#define PCB_IDX_processC            3
+#define PCB_IDX_HD                  4
+#define PCB_IDX_processD            5
+#define PCB_IDX_FS                  6
 
 #define IPC_MSG_GET_TICKS 1
 
