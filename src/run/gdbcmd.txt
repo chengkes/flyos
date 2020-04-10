@@ -2,6 +2,7 @@ target remote localhost:1234
 file run/kernel.bin
 b exceptionHandler
 b _writeHd
+b _identifyHd
 #b osinit
 #b readHd
 #b hdIrqHandler

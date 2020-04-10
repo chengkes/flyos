@@ -26,8 +26,9 @@ void itos(u32 a, u32 base, char* p){
     }
 
     *p++ = '0';
+    --w;
     while (w >=0) {
-        *p++ = b[--w];
+        *p++ = b[w--];
     }    
     *p = 0;
 }

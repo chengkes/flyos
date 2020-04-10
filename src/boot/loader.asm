@@ -169,7 +169,7 @@ showByte:
     jmp     .1
 .less10:
     add     al, '0'
-.1    
+.1:    
     mov     [gs:bp] , ax
     add     bp, 2
     mov     al, [bx]

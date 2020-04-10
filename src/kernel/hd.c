@@ -60,7 +60,7 @@ static int _identifyHd(OUT HdInfo* allHd)
 
     // test writeHd and readHd, use shell command xxd to verify
     u16 buf[257];
-    memSet((u8*)buf, 9, sizeof(buf));
+    memSet((u8*)buf, 0, sizeof(buf));
     _writeHd(0, 0, 0, buf, sizeof(buf));
     printf("write over..................."); 
     return hdCount;
