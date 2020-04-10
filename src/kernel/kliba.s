@@ -63,7 +63,7 @@ writePort:
     pop     edi
     ret
 
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 以byte形式写端口
 ; void writePortInByte(u16 port, u8* buf,u32 size)
 writePortInByte:

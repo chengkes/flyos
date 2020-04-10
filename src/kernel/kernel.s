@@ -77,6 +77,10 @@ extern syscallTable
 
 _start:
     mov     esp, StackTop       ; 重新设置
+    mov     ah, 0ch
+    mov     al, 'K'
+    mov     [gs:2], ax
+
     ; 重新放置 GDT
     sgdt    [gdtPtr]
     call    osinit

@@ -183,8 +183,9 @@ showByte:
 
 %include "fat12.inc"
 %include "lib.inc"
-    KernelBase          equ 7000h
+    KernelBase          equ 5000h
     kernelOffset        equ 0
+    
     KernelName: 		db 	"KERNEL  BIN"
     NoKernel: 			db 	"NoKernel"
     NoKernelLen         equ  $ - NoKernel
@@ -222,7 +223,7 @@ LABEL_PM_START:
     ;; 重新放置内核
     mov     ebx, [KernelBase*10h+kernelOffset+ePhOff]     ;Program Header开始地址
     add     ebx, KernelBase*10h+kernelOffset 
-    mov     dx, [KernelBase*10h+kernelOffset+ePhEntSize ]   
+    mov     dx, [KernelBase*10h+kernelOffset+ePhEntSize ]    ;Program Header entry 大小
     and     edx, 0ffffh
     mov     cx, [KernelBase*10h+kernelOffset+ePhNum ]     ;Program Header数目
 .next_ph:   
@@ -240,12 +241,13 @@ LABEL_PM_START:
     jz      .done    
     add     ebx, edx    
     jmp     .next_ph
-
 .done:
-    jmp     SelectorC32: KenerlEntry        ; 跳转到kernel
-
-;; ELF文件 变量定义
-KenerlEntry     equ  0x30400    ; 必须与makefile中一致
+    push    SelectorC32
+    push    dword [KernelBase*10h+kernelOffset+eEntryOff]   ; 内核入口地址 
+    retf                            ;  跳转到kernel, 类似 jmp SelectorC32:KenerlEntry  
+       
+;; ELF文件 常量定义
+eEntryOff       equ  24             ; entry位置 偏移 
 ePhOff          equ  28             ; ProgramHader位置 偏移  
 ePhEntSize      equ  42             ; 每个ProgramHeader大小 偏移
 ePhNum          equ  44             ; ProgramHader数目 偏移

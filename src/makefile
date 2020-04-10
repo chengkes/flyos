@@ -7,7 +7,7 @@ CC=gcc
 LD=ld
 ASFLAGS= -f elf -g -F stabs
 CCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
-LDFLAGS=  -m elf_i386 -nostdlib -Ttext $(KenerlEntry)    
+LDFLAGS= -m elf_i386 -nostdlib -Ttext $(KenerlEntry)    
 
 C_SRC= $(shell find . -name *.c)
 C_OBJ= $(patsubst %.c, %.o, $(C_SRC))
@@ -30,8 +30,10 @@ run/kernel.bin: $(S_OBJ) $(C_OBJ)
 
 run/kernel.bin.asm:run/kernel.bin 
 	ndisasm $< -o $(KenerlEntry) -u -e 0x400 > $@ 
+run/loader.bin.asm:run/loader.bin 
+	ndisasm $< -u > $@ 
 
-run/os.img:run/boot.bin run/loader.bin run/kernel.bin run/kernel.bin.asm
+run/os.img:run/boot.bin run/loader.bin run/kernel.bin run/kernel.bin.asm run/loader.bin.asm
 	dd if=/dev/zero of=$@ bs=1024 count=1440
 	dd if=$< of=$@ conv=notrunc
 	sudo mount $@ /mnt/floppy -o loop
