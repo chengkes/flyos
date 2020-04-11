@@ -15,54 +15,63 @@ static void getHdInfo(HdInfo *p);
 static void getOnePartInfo(u8 *buf, int lba, HdInfo *p);
 static void getPartInfo(int sectorNo, HdInfo *p);
 
-void _writeHd(u8 device, u8 chanel, int sectorNo, u16 *buf, int size);
+static int _readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, u16 *buf);
 
 // 硬盘ATA0,中断处理程序 int14
 static void hdIrqHandler0()
 {
     hdStatus[0] = inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
-    sendIntMsgTo(PCB_IDX_HD);                              // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
+    sendIntMsgTo(PCB_IDX_HD);                     // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
 }
 
 // 硬盘ATA1,中断处理程序 int15
 static void hdIrqHandler1()
 {
     hdStatus[1] = inByte(PORT_HD_SECONDARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
-    sendIntMsgTo(PCB_IDX_HD);                                // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
+    sendIntMsgTo(PCB_IDX_HD);                       // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
 }
 
 // 识别硬盘， 返回硬盘个数
-int identifyHd(HdInfo* hd) {
+int identifyHd(HdInfo *hd)
+{
     Message msg;
     msg.recvPcbIdx = PCB_IDX_HD;
-    msg.data = (u32)hd;  // 硬盘详细信息由HD task直接写入地址hd
+    msg.data = (u32)hd; // 硬盘详细信息由HD task直接写入地址hd
     msg.type = HD_CMD_IDENTIFY;
     sendRecv(SEND, &msg);
 
     msg.sendPcbIdx = PCB_IDX_HD;
-    sendRecv(RECV, &msg);  // 等待hd task处理完毕
-    return msg.data; // 硬盘个数
-}  
+    sendRecv(RECV, &msg); // 等待hd task处理完毕
+    return msg.data;      // 硬盘个数
+}
 
-static int _identifyHd(OUT HdInfo* allHd)
+static int _identifyHd(OUT HdInfo *allHd)
 {
     u8 hdCount = *((u8 *)0x475); // 硬盘个数， BIOS已经将硬盘个数写入内存0x475处
     printf("hd count: %d \n", hdCount);
-    for(int i = 0; i<hdCount; ++i) {
+    for (int i = 0; i < hdCount; ++i)
+    {
         HdInfo *p = &allHd[i];
-        p->device = i&1;
+        p->device = i & 1;
         p->chanel = i >> 1;
         p->partCnt = 0;
         getHdInfo(p);
         getPartInfo(0, p);
         printHdInfo(p); // 打印硬盘信息
-    } 
+    }
 
     // test writeHd and readHd, use shell command xxd to verify
-    u16 buf[257];
-    memSet((u8*)buf, 0, sizeof(buf));
-    _writeHd(0, 0, 0, buf, sizeof(buf));
-    printf("write over..................."); 
+    // u16 buf[SECTOR_SIZE];
+    // memSet((u8 *)buf, 0, sizeof(buf));
+    // // _writeHd(0, 0, 1, 1,  buf);
+
+    // _readHd(0, 0, 1, 2, buf);
+    // for(int i=0;i<sizeof(buf)/2; i++) {
+    //     printf("%x", buf[i]);
+    //     if (i %16==0) printf("\n");
+    // }
+
+    // printf("read over...................");
     return hdCount;
 }
 
@@ -94,12 +103,12 @@ static void hdCmd(u8 device, u8 chanel, u8 sectorCnt, u32 sectorNo, u32 cmd)
 
 // 获取硬盘信息
 static void getHdInfo(HdInfo *p)
-{ 
+{
     // 像硬盘发生IDENTIFY命令，获取硬盘参数
     hdCmd(p->device, p->chanel, 0, 0, HD_CMD_IDENTIFY);
     recvIntMsg(); // 等待硬盘中断发生
     u16 buf[256];
-    readPort(p->chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
+    insWord(p->chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
 
     p->sectorCnt = (buf[61] << 16) | buf[60];
     p->capability = buf[49]; // bit9=1，表示支持LBAs
@@ -139,18 +148,19 @@ static void printHdInfo(HdInfo *p)
     for (int i = 0; i < p->partCnt; ++i)
     {
         PartInfo *pt = &p->partInfo[i];
-        printf("%d -- boot:%x, start: %d, count:%d, type:%x \n",i, pt->isBootable, pt->startSector, pt->sectorCnt, pt->type);
+        printf("%d -- boot:%x, start: %d, count:%d, type:%x \n", i, pt->isBootable, pt->startSector, pt->sectorCnt, pt->type);
     }
 }
 
-// 从硬盘hd中第sector个扇区开始，读取size个扇区到buf中
-int readHd(HdInfo* hd, u16* buf, u32 sector, u32 size) {
+// 从硬盘hd中第sector个扇区开始，读取sectorCnt个扇区到buf中
+int readHd(HdInfo *hd, u16 *buf, u32 sector, u8 sectorCnt)
+{
     Message msg;
     msg.recvPcbIdx = PCB_IDX_HD;
     msg.type = HD_CMD_READ;
-    msg.data = (u32) buf;
+    msg.data = (u32)buf;
     msg.param1 = sector;
-    msg.param2 = size;
+    msg.param2 = sectorCnt;
     msg.param3 = (u32)hd;
     sendRecv(SEND, &msg);
 
@@ -161,36 +171,39 @@ int readHd(HdInfo* hd, u16* buf, u32 sector, u32 size) {
 }
 
 // 从硬盘设备device中读取sectorNo开始的 sectorCnt个sector数据到buf
-static int _readHd(u8 device, u8 chanel, int sectorNo, int sectorCnt, u16 *buf)
+static int _readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, u16 *buf)
 {
     hdCmd(device, chanel, sectorCnt, sectorNo, HD_CMD_READ);
-    while (sectorCnt--)
-    {
-        recvIntMsg(); // 等待硬盘中断发生
-        readPort(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
-        buf += SECTOR_SIZE / 2;
-    }
+    recvIntMsg(); // 等待硬盘中断发生
+    insWord(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, sectorCnt * SECTOR_SIZE / 2);
 
     return 0;
 }
 
-// 向硬盘中第sectorNo个扇区开始，写入size个字节
-// todo: test it
-void _writeHd(u8 device, u8 chanel, int sectorNo, u16 *buf, int size)
+// 将buf中数据写入硬盘hd中第sector个扇区开始的sectorCnt个扇区中
+int writeHd(HdInfo *hd, u16 *buf, u32 sector, u8 sectorCnt)
 {
-    u8 sectorCnt = (size + SECTOR_SIZE -1) / SECTOR_SIZE;
+    Message msg;
+    msg.recvPcbIdx = PCB_IDX_HD;
+    msg.type = HD_CMD_WRITE;
+    msg.data = (u32)buf;
+    msg.param1 = sector;
+    msg.param2 = sectorCnt;
+    msg.param3 = (u32)hd;
+    sendRecv(SEND, &msg);
+
+    msg.sendPcbIdx = PCB_IDX_HD;
+    sendRecv(RECV, &msg);
+
+    return 0;
+}
+// 向硬盘中第sectorNo个扇区开始，写入size个字节
+void _writeHd(u8 device, u8 chanel, int sectorNo, u8 sectorCnt, u16 *buf)
+{
     hdCmd(device, chanel, sectorCnt, sectorNo, HD_CMD_WRITE);
-    while (size > 0)
-    {
-        int size2Write = SECTOR_SIZE > size ? size : SECTOR_SIZE; // 以字节为单位
-        wait4hdStatus(chanel, HD_STATUS_DRQ, HD_STATUS_DRQ);        
-        writePort(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, size2Write/2);
-        // writePortInByte(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, 
-        //     buf, size2Write);
-        recvIntMsg(); // 等待硬盘中断发生
-        size -= size2Write;
-        buf += size2Write/2;
-    }
+    wait4hdStatus(chanel, HD_STATUS_DRQ, HD_STATUS_DRQ);
+    outsWord(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, sectorCnt * SECTOR_SIZE / 2);
+    recvIntMsg(); // 等待硬盘中断发生
 }
 
 // 获取硬盘分区信息
@@ -236,29 +249,36 @@ void taskHd()
 {
     putIrqHandler(IRQ_IDX_HARDDISK0, hdIrqHandler0); // 指定硬盘中断处理程序
     putIrqHandler(IRQ_IDX_HARDDISK1, hdIrqHandler1); // 指定硬盘中断处理程序
-    
+
     char a[2] = "0";
     while (1)
     {
         Message msg;
         msg.sendPcbIdx = PCB_IDX_ANY;
-        sendRecv (RECV, &msg);
+        sendRecv(RECV, &msg);
 
         Message r;
         r.recvPcbIdx = msg.sendPcbIdx;
-        HdInfo* hd ;
-        if (msg.type == HD_CMD_IDENTIFY) {            
-            hd = (HdInfo*)msg.data;      
-            r.data = _identifyHd(hd);   
+        HdInfo *hd;
+        if (msg.type == HD_CMD_IDENTIFY)
+        {
+            hd = (HdInfo *)msg.data;
+            r.data = _identifyHd(hd);
             sendRecv(SEND, &r);
-        } else if (msg.type == HD_CMD_READ) {
-            hd = (HdInfo*)msg.param3;
-            r.data = _readHd(hd->device, hd->chanel, msg.param1, msg.param2, (u16*)msg.data);
+        }
+        else if (msg.type == HD_CMD_READ)
+        {
+            hd = (HdInfo *)msg.param3;
+            r.data = _readHd(hd->device, hd->chanel, msg.param1, msg.param2, (u16 *)msg.data);
             sendRecv(SEND, &r);
-        } else if (msg.type == HD_CMD_WRITE) {
+        }
+        else if (msg.type == HD_CMD_WRITE)
+        {
+            hd = (HdInfo *)msg.param3;
+            _writeHd(hd->device, hd->chanel, msg.param1, msg.param2, (u16 *)msg.data);
+            sendRecv(SEND, &r); 
+        }
 
-        } 
-        
         write(a, green);
         a[0]++;
         if (a[0] > '5')

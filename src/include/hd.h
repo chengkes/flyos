@@ -136,5 +136,7 @@ typedef struct _HdInfo
 
 void taskHd();
 int identifyHd(HdInfo* hd);
-int readHd(HdInfo* hd, u16* buf, u32 sector, u32 size);
+
+int readHd(HdInfo* hd, u16* buf, u32 sector, u8 sectorCnt);
+int writeHd(HdInfo* hd, u16* buf, u32 sector, u8 sectorCnt);
 #endif
