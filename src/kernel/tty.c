@@ -197,7 +197,7 @@ void taskTty(){
             // }else if (key ==TAB) {
             //     dispStr(getCurrentTty(), "    ", white);
             // }else {
-            //     dispInt(getCurrentTty(), key, red);  // todo, 测试代码
+            //     dispInt(getCurrentTty(), key, red);  // 测试代码
             // }
         // }
     }

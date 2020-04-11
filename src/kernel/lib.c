@@ -9,6 +9,14 @@ void memSet(u8* to, u8 val, u32 size){
     for(int i=0;i<size; i++) to[i] = val;
 }
 
+int strcmp(char* p, char* q){
+    while(*p!=0 && *q!=0 && *p == *q) {
+        ++p; ++q;
+    }
+
+    return *p - *q;
+}
+
 // 整数转换为base进制字符串
 void itos(u32 a, u32 base, char* p){
     char b[32]="";

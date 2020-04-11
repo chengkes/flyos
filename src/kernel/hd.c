@@ -153,15 +153,14 @@ static void printHdInfo(HdInfo *p)
 }
 
 // 从硬盘hd中第sector个扇区开始，读取sectorCnt个扇区到buf中
-int readHd(HdInfo *hd, u16 *buf, u32 sector, u8 sectorCnt)
+int readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, void *buf)
 {
     Message msg;
     msg.recvPcbIdx = PCB_IDX_HD;
     msg.type = HD_CMD_READ;
     msg.data = (u32)buf;
-    msg.param1 = sector;
-    msg.param2 = sectorCnt;
-    msg.param3 = (u32)hd;
+    msg.param1 = sectorNo;
+    msg.param2 = (sectorCnt<<16) & (device<<8) & chanel; 
     sendRecv(SEND, &msg);
 
     msg.sendPcbIdx = PCB_IDX_HD;
@@ -180,16 +179,15 @@ static int _readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, u16 *buf)
     return 0;
 }
 
-// 将buf中数据写入硬盘hd中第sector个扇区开始的sectorCnt个扇区中
-int writeHd(HdInfo *hd, u16 *buf, u32 sector, u8 sectorCnt)
+// 将buf中数据写入硬盘hd中第sectorNo个扇区开始的sectorCnt个扇区中
+int writeHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, void *buf)
 {
     Message msg;
     msg.recvPcbIdx = PCB_IDX_HD;
     msg.type = HD_CMD_WRITE;
     msg.data = (u32)buf;
-    msg.param1 = sector;
-    msg.param2 = sectorCnt;
-    msg.param3 = (u32)hd;
+    msg.param1 = sectorNo;
+    msg.param2 = (sectorCnt<<16) & (device<<8) & chanel; 
     sendRecv(SEND, &msg);
 
     msg.sendPcbIdx = PCB_IDX_HD;
@@ -259,23 +257,26 @@ void taskHd()
 
         Message r;
         r.recvPcbIdx = msg.sendPcbIdx;
-        HdInfo *hd;
         if (msg.type == HD_CMD_IDENTIFY)
         {
-            hd = (HdInfo *)msg.data;
+            HdInfo* hd = (HdInfo *)msg.data;
             r.data = _identifyHd(hd);
             sendRecv(SEND, &r);
         }
         else if (msg.type == HD_CMD_READ)
-        {
-            hd = (HdInfo *)msg.param3;
-            r.data = _readHd(hd->device, hd->chanel, msg.param1, msg.param2, (u16 *)msg.data);
+        { 
+            u8  sectorCnt = (msg.param2 >> 16) & 0xff;
+            u8  device =  (msg.param2 >> 8) & 0xff;
+            u8  chanel = msg.param2  & 0xff; 
+            r.data = _readHd(device, chanel, msg.param1, sectorCnt, (u16 *)msg.data);
             sendRecv(SEND, &r);
         }
         else if (msg.type == HD_CMD_WRITE)
         {
-            hd = (HdInfo *)msg.param3;
-            _writeHd(hd->device, hd->chanel, msg.param1, msg.param2, (u16 *)msg.data);
+            u8  sectorCnt = (msg.param2 >> 16) & 0xff;
+            u8  device =  (msg.param2 >> 8) & 0xff;
+            u8  chanel = msg.param2  & 0xff; 
+            _writeHd(device, chanel, msg.param1,sectorCnt, (u16 *)msg.data);
             sendRecv(SEND, &r); 
         }
 

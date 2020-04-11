@@ -3,7 +3,7 @@
 #define TYPES_H
 
 #define OUT      // 表示参数会被修改，便于阅读代码
-
+#define NULL		0
 
 typedef unsigned int   u32;
 typedef unsigned short u16;

@@ -107,6 +107,7 @@
 #define HD_STATUS_DRQ	0x08
 
 #define SECTOR_SIZE 	512
+#define BUF_SECTOR_CNT  20
 
 #define MAKE_DEVICE(lba, device, lbaHigh) (0xA0 | ((1 & (lba)) << 6) | ((1 & (device)) << 4) | ((lbaHigh)&0x0f))
 
@@ -137,6 +138,6 @@ typedef struct _HdInfo
 void taskHd();
 int identifyHd(HdInfo* hd);
 
-int readHd(HdInfo* hd, u16* buf, u32 sector, u8 sectorCnt);
-int writeHd(HdInfo* hd, u16* buf, u32 sector, u8 sectorCnt);
+int readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, void *buf);
+int writeHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, void *buf);
 #endif

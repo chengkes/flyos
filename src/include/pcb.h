@@ -10,7 +10,6 @@ typedef struct _Message {
     u32 data;       // 发送数据
     u32 param1;
     u32 param2;
-    u32 param3;
 } Message;
 
 #define PCB_STATE_SENDING 0x02
