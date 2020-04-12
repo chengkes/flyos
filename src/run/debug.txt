@@ -1,4 +1,5 @@
 #b 0x7c00    #boot
-#b 0x90100   #loader 
-#b 0x30400   #kernel entry
+b 0x90100   #loader 
+b 0x90e5f   #
+b 0x30460   #kernel entry
 c

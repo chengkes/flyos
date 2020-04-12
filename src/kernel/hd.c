@@ -60,18 +60,6 @@ static int _identifyHd(OUT HdInfo *allHd)
         printHdInfo(p); // 打印硬盘信息
     }
 
-    // test writeHd and readHd, use shell command xxd to verify
-    // u16 buf[SECTOR_SIZE];
-    // memSet((u8 *)buf, 0, sizeof(buf));
-    // // _writeHd(0, 0, 1, 1,  buf);
-
-    // _readHd(0, 0, 1, 2, buf);
-    // for(int i=0;i<sizeof(buf)/2; i++) {
-    //     printf("%x", buf[i]);
-    //     if (i %16==0) printf("\n");
-    // }
-
-    // printf("read over...................");
     return hdCount;
 }
 
@@ -160,7 +148,7 @@ int readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, void *buf)
     msg.type = HD_CMD_READ;
     msg.data = (u32)buf;
     msg.param1 = sectorNo;
-    msg.param2 = (sectorCnt<<16) & (device<<8) & chanel; 
+    msg.param2 = (sectorCnt<<16) | (device<<8) | chanel; 
     sendRecv(SEND, &msg);
 
     msg.sendPcbIdx = PCB_IDX_HD;
@@ -187,7 +175,7 @@ int writeHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, void *buf)
     msg.type = HD_CMD_WRITE;
     msg.data = (u32)buf;
     msg.param1 = sectorNo;
-    msg.param2 = (sectorCnt<<16) & (device<<8) & chanel; 
+    msg.param2 = (sectorCnt<<16) | (device<<8) | chanel; 
     sendRecv(SEND, &msg);
 
     msg.sendPcbIdx = PCB_IDX_HD;
@@ -279,7 +267,7 @@ void taskHd()
             _writeHd(device, chanel, msg.param1,sectorCnt, (u16 *)msg.data);
             sendRecv(SEND, &r); 
         }
-
+        printf("Message: %x \n", msg.type);
         write(a, green);
         a[0]++;
         if (a[0] > '5')

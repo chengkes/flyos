@@ -1,9 +1,8 @@
 target remote localhost:1234
 file run/kernel.bin
 b exceptionHandler
-b mkfs
-b taskFs
-#b osinit
+#b fs.c:70
+b osinit
 #b readHd
 #b hdIrqHandler
 c

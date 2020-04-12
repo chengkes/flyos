@@ -44,11 +44,21 @@ typedef enum
 } FileType;
 
 void readSuperBlock(HdInfo* hd, u8 partIdx, SuperBlock* sb);
-void mkfs(HdInfo* hd , u8 partIdx);
+void mkfs(HdInfo* hd , u8 partIdx, SuperBlock* sb);
 int fexist(HdInfo* hd, SuperBlock* s, char* filename, Inode* p) ;
 
 void taskFs()
 {
+    // test writeHd and readHd, use shell command xxd to verify
+    // u16 buf[SECTOR_SIZE];
+    // memSet((u8 *)buf, 0, sizeof(buf));
+    // writeHd(0, 0, 1, 1,  buf);
+    // readHd(0, 0, 1, 2, buf);
+    // for(int i=0;i<sizeof(buf)/2; i++) {
+    //     printf("%x", buf[i]);
+    //     if (i %16==0) printf("\n");
+    // }
+
     HdInfo allHd[10];
     int hdCount = identifyHd (allHd);
     assert(hdCount>0);
@@ -58,19 +68,18 @@ void taskFs()
     SuperBlock sb;
     readSuperBlock(allHd, partIdx, &sb); 
     if (sb.type != FS_TYPE) {
-        mkfs(allHd, partIdx);  // todo: test it
-        readSuperBlock(allHd, partIdx, &sb);
+        mkfs(allHd, partIdx, &sb);         
     }  
     assert(sb.type == FS_TYPE);    
 
-    // fexist(allHd, &sb, "not exist", NULL);
+    int i = fexist(allHd, &sb, "not exist", NULL);
 
-    printf("start fs task...\n");
+    printf("start fs task. %d ..\n", i);
     while (1)
     {    }
 }
 
-void readSuperBlock(HdInfo* hd, u8 partIdx, SuperBlock* sb) {
+void readSuperBlock(HdInfo* hd, u8 partIdx, OUT SuperBlock* sb) {
     u32 lba = hd->partInfo[partIdx].startSector;
     u8 buf[SECTOR_SIZE];
     readHd(hd->device, hd->chanel, lba+1, 1,  (u16*)buf);
@@ -83,29 +92,26 @@ void readSuperBlock(HdInfo* hd, u8 partIdx, SuperBlock* sb) {
 // @param partIdx，分区索引
 // @note inode[0] 保留为特殊用途，表示空
 // 文件系统不支持目录，所有文件最大可用空间固定为512kb,且连续分配
-void mkfs(HdInfo* hd , u8 partIdx)
-{ 
-    u32 sectorCnt = hd->partInfo[partIdx].sectorCnt;
-    u32 lba = hd->partInfo[partIdx].startSector;
-
+void mkfs(HdInfo* hd , u8 partIdx, OUT SuperBlock* sb)
+{     
     //1、 准备SuperBlock
-    SuperBlock sb;
-    sb.fileSectorCnt = 32; // 每个文件固定分配s多少个Sector
-    sb.type = FS_TYPE;  
-    sb.inodeCnt = MAX_INODE_COUNT; 
-    sb.sectorCnt = sectorCnt;
-    sb.inodeSize = sizeof(Inode);
-    sb.startSectorNo = lba;
-    sb.inodeMapSectorCnt = (sb.inodeCnt + SECTOR_SIZE * 8 - 1) / (SECTOR_SIZE * 8);
-    sb.sectorMapSectorCnt = (sb.sectorCnt + SECTOR_SIZE * 8 - 1) / (SECTOR_SIZE * 8);
-    sb.inodeArraySectorCnt = (sb.inodeCnt * sb.inodeSize + SECTOR_SIZE - 1) / SECTOR_SIZE;
-    sb.dataSectorStartNo = lba + 1 + 1 + sb.inodeMapSectorCnt + sb.sectorMapSectorCnt + sb.inodeArraySectorCnt;
+    sb->fileSectorCnt = 32; // 每个文件固定分配s多少个Sector
+    sb->type = FS_TYPE;  
+    sb->inodeCnt = MAX_INODE_COUNT; 
+    sb->sectorCnt = hd->partInfo[partIdx].sectorCnt;
+    sb->inodeSize = sizeof(Inode);
+    sb->startSectorNo = hd->partInfo[partIdx].startSector;
+    sb->inodeMapSectorCnt = (sb->inodeCnt + SECTOR_SIZE * 8 - 1) / (SECTOR_SIZE * 8);
+    sb->sectorMapSectorCnt = (sb->sectorCnt + SECTOR_SIZE * 8 - 1) / (SECTOR_SIZE * 8);
+    sb->inodeArraySectorCnt = (sb->inodeCnt * sb->inodeSize + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    sb->dataSectorStartNo = sb->startSectorNo  + 1 + 1 + sb->inodeMapSectorCnt + sb->sectorMapSectorCnt + sb->inodeArraySectorCnt;
 
     u8 buf[SECTOR_SIZE*BUF_SECTOR_CNT];
     //2 将InodeMap 和 SectorMap 都置0
     memSet(buf, 0, BUF_SECTOR_CNT*SECTOR_SIZE);
-    for (int startLba = lba + 1 + 1, leftSectorCnt = sb.inodeMapSectorCnt + sb.sectorMapSectorCnt;
-         leftSectorCnt > 0; leftSectorCnt -= BUF_SECTOR_CNT)
+    u32 startLba = sb->startSectorNo + 1 + 1;
+    u32 leftSectorCnt = sb->inodeMapSectorCnt + sb->sectorMapSectorCnt; 
+    while (leftSectorCnt > 0)
     {
         int sectorCnt2Write = BUF_SECTOR_CNT > leftSectorCnt ? leftSectorCnt : BUF_SECTOR_CNT;
         writeHd(hd->device, hd->chanel, startLba, sectorCnt2Write, buf);
@@ -114,8 +120,8 @@ void mkfs(HdInfo* hd , u8 partIdx)
     }
 
     // 3 写入SuperBlock
-    memCpy(buf, (u8*)&sb, sizeof(SuperBlock));
-    writeHd(hd->device, hd->chanel, lba + 1, 1, buf); // 写入SuperBlock
+    memCpy(buf, (u8*)sb, sizeof(SuperBlock));
+    writeHd(hd->device, hd->chanel, sb->startSectorNo + 1, 1, buf); // 写入SuperBlock
 }
 
 
@@ -144,7 +150,7 @@ int fexist(HdInfo* hd, SuperBlock* s, char* filename, Inode* p) {
             for(int bit=0; bit<8; ++bit)  {
                 if ((inodeMapBuf[i]>>bit) & 1) {
                     getInode(hd, s, inodeIdx + i*8 + bit, &node);
-                    printf("...check file: %s \n", node.filename );
+                    printf( "...check file: %s \n", node.filename );
                     if (0==strcmp(node.filename, filename)) {
                         if (p != NULL) memCpy((u8*)p, (u8*)&node, sizeof(Inode));
                         return inodeIdx + i*8 + bit;
@@ -160,8 +166,14 @@ int fexist(HdInfo* hd, SuperBlock* s, char* filename, Inode* p) {
     return -1;
 }
 
+int fcreate(HdInfo* hd, SuperBlock* sb, char* filename) {
+    assert(fexist(hd, sb, filename, NULL)==-1);
+
+
+    return -1;
+}
+
 // u32 fopen(char* filename) ;
-// int fcreate(char* filename) ;
 // int fread(u32 fid, u8* buf, u32 size) ;
 // int fclose(u32 fid);
 // int fwrite(u32 fid, u8* data, u32 size) ;

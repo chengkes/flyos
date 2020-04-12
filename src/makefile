@@ -7,7 +7,7 @@ CC=gcc
 LD=ld
 ASFLAGS= -f elf -g -F stabs
 CCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
-LDFLAGS= -m elf_i386 -nostdlib -Ttext $(KenerlEntry)    
+LDFLAGS= -m elf_i386 -nostdlib -Ttext $(KenerlEntry)      # todo: kernel.bine文件大小超过64KB，在实模式下加载出错
 
 C_SRC= $(shell find . -name *.c)
 C_OBJ= $(patsubst %.c, %.o, $(C_SRC))
@@ -17,38 +17,38 @@ S_OBJ= $(patsubst %.s, %.o, $(S_SRC))
 all:clean run/os.img  run/kernel.bin.asm run/loader.bin.asm
 
 .s.o: 
-	@$(AS) $(ASFLAGS) $< -o $@
+	$(AS) $(ASFLAGS) $< -o $@
 .c.o:
-	@$(CC) $(CCFLAGS) $< -o $@ 
+	$(CC) $(CCFLAGS) $< -o $@ 
 
 run/boot.bin:boot/boot.asm boot/fat12.inc boot/lib.inc
-	@$(AS) -I ./boot/ $< -o $@ 
+	$(AS) -I ./boot/ $< -o $@ 
 run/loader.bin:boot/loader.asm boot/fat12.inc boot/lib.inc boot/pm.inc
-	@$(AS) -I ./boot/ $< -o $@ 
+	$(AS) -I ./boot/ $< -o $@ 
 run/kernel.bin: $(S_OBJ) $(C_OBJ) 
-	@$(LD) $(LDFLAGS) $^ -o $@ 
+	$(LD) $(LDFLAGS) $^ -o $@ 
 
 run/kernel.bin.asm:run/kernel.bin 
-	@ndisasm $< -o $(KenerlEntry) -u -e 0x400 > $@ 
+	ndisasm $< -o $(KenerlEntry) -u -e 0x400 > $@ 
 run/loader.bin.asm:run/loader.bin 
-	@ndisasm $< -u > $@ 
+	ndisasm $< -u > $@ 
 
 run/os.img:run/boot.bin run/loader.bin run/kernel.bin
-	@dd if=/dev/zero of=$@ bs=1024 count=1440  
-	@dd if=$< of=$@ conv=notrunc  
-	@sudo mount $@ /mnt/floppy -o loop
-	@sudo cp run/loader.bin /mnt/floppy  
-	@sudo cp run/kernel.bin /mnt/floppy  
-	@sudo umount /mnt/floppy
+	dd if=/dev/zero of=$@ bs=1024 count=1440  
+	dd if=$< of=$@ conv=notrunc  
+	sudo mount $@ /mnt/floppy -o loop
+	sudo cp run/loader.bin /mnt/floppy  
+	sudo cp run/kernel.bin /mnt/floppy  
+	sudo umount /mnt/floppy
 
 clean:
-	@rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm $(S_OBJ) $(C_OBJ) 
+	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm $(S_OBJ) $(C_OBJ) 
 
 qemu:run/os.img
 	qemu-system-i386 $(QEMUTAG)
 debug:run/os.img
 	qemu-system-i386 -S -s $(QEMUTAG) &
-	sleep 3
+	sleep 5
 	gdb --command=run/gdbcmd.txt
 run:run/os.img     
 	bochs -q -f run/bochsrc -rc run/debug.txt

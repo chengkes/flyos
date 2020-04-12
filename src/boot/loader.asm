@@ -183,7 +183,7 @@ showByte:
 
 %include "fat12.inc"
 %include "lib.inc"
-    KernelBase          equ 5000h
+    KernelBase          equ 6000h
     kernelOffset        equ 0
     
     KernelName: 		db 	"KERNEL  BIN"
