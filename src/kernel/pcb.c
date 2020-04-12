@@ -92,7 +92,7 @@ static void processD(){
 
     // test delete
     // fremove(fid);
-    while(1);
+    while(1){};
 }
 
 void sendRecv(u32 type, Message* m) {

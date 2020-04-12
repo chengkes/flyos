@@ -1,10 +1,30 @@
-BITS 32
-[section .bss]  
-    resb	2048
-StackTop :
+
+[BITS 32]
+[section .text]  
+
+;-----------------------------------------------------------
+; 符合Multiboot规范的 OS 映象需要这样一个 magic Multiboot 头
+; Multiboot 头的分布必须如下表所示：
+; ----------------------------------------------------------
+; 偏移量  类型  域名        备注
+;   0     u32   magic       必需
+;   4     u32   flags       必需 
+;   8     u32   checksum    必需 ;
+;-----------------------------------------------------------
+; 域checksum是一个32位的无符号值，当与其他的magic域(也就是magic和flags)相加时，
+; 要求其结果必须是32位的无符号值 0 (即magic + flags + checksum = 0)
+MBOOT_HEADER_MAGIC 	equ 	0x1BADB002 	; Multiboot 魔数，由规范决定的
+MBOOT_PAGE_ALIGN 	equ 	1 << 0    	; 0 号位表示所有的引导模块将按页(4KB)边界对齐
+MBOOT_MEM_INFO 		equ 	1 << 1    	; 1 号位通过 Multiboot 信息结构的 mem_* 域包括可用内存的信息,(告诉GRUB把内存空间的信息包含在Multiboot信息结构中)
+MBOOT_HEADER_FLAGS 	equ 	MBOOT_PAGE_ALIGN | MBOOT_MEM_INFO  ; 定义我们使用的 Multiboot 的标记
+MBOOT_CHECKSUM 		equ 	- (MBOOT_HEADER_MAGIC + MBOOT_HEADER_FLAGS)
+
+dd MBOOT_HEADER_MAGIC 	; GRUB 会通过这个魔数判断该映像是否支持
+dd MBOOT_HEADER_FLAGS   ; GRUB 的一些加载时选项，其详细注释在定义处
+dd MBOOT_CHECKSUM       ; 检测数值，其含义在定义处
 
 EOI                  equ   20h
-; 必须与 klibc.c 中定义保持一致
+; 以下an常量定义必须与 klibc.c 中定义保持一致
 SA_RPL3			     equ   3	 
 GDT_SELECTOR_D32     equ   0x08                 ; 数据段 选择子
 GDT_SELECTOR_C32     equ   0x10                 ; 代码段 选择子
@@ -23,10 +43,7 @@ PCB_EAX       equ   7*4
 ; 与klibc.c 中 TSS结构 中变量位置保持一致
 TSS_ESP0      equ   1*4
 
-[section .text]  
-
 global  _start
-
 global  hwint00
 global  hwint01
 global  hwint02
@@ -313,3 +330,9 @@ syscall:
     pop     ebx
     pop     eax
     ret
+
+BITS 32
+[section .bss]  
+    resb	20480
+StackTop :
+

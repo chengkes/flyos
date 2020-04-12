@@ -1,5 +1,4 @@
 #b 0x7c00    #boot
-b 0x90100   #loader 
-b 0x90e5f   #
-b 0x30460   #kernel entry
+#b 0x60100   #loader  参见 boot/lib.inc 中 loaderbase
+b 0x80400   #kernel 参见 makefile 中Kernelentry 
 c

@@ -172,8 +172,8 @@ void initTty() {
     putSyscall(SYSCALL_IDX_WRITE, sysWrite);
 }
 
-
 void taskTty(){
+    printf("task tty is ready...\n");
     while(1) {
         u32 key =keyboardRead(0);
         if ( key == DOWN) {

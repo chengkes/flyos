@@ -64,17 +64,17 @@ void taskFs()
     assert(hdCount>0);
     assert(allHd[0].partCnt >0);
 
-    u8 partIdx = 0;
-    SuperBlock sb;
-    readSuperBlock(allHd, partIdx, &sb); 
-    if (sb.type != FS_TYPE) {
-        mkfs(allHd, partIdx, &sb);         
-    }  
-    assert(sb.type == FS_TYPE);    
+    // u8 partIdx = 0;
+    // SuperBlock sb;
+    // readSuperBlock(allHd, partIdx, &sb); 
+    // if (sb.type != FS_TYPE) {
+    //     mkfs(allHd, partIdx, &sb);         
+    // }  
+    // assert(sb.type == FS_TYPE);    
 
-    int i = fexist(allHd, &sb, "not exist", NULL);
+    // int i = fexist(allHd, &sb, "not exist", NULL);
 
-    printf("start fs task. %d ..\n", i);
+    printf("start fs task. %d ..\n", 12);
     while (1)
     {    }
 }

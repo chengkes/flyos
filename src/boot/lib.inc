@@ -245,6 +245,6 @@ ReadSector:
 	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-BUFF_ADDR			EQU	08000H 
-LoaderBase			EQU	09000H    
+BUFF_ADDR			EQU	01000H 
+LoaderBase			EQU	02000H    
 LoaderOffset		EQU	0100h

@@ -1,4 +1,4 @@
-KenerlEntry=0x30400  # 必须与boot/loader.asm中一致
+KenerlEntry=0x20400   
 
 QEMUTAG= -m 64M -fda run/os.img -hda run/hd.img -boot a 
 
@@ -7,14 +7,14 @@ CC=gcc
 LD=ld
 ASFLAGS= -f elf -g -F stabs
 CCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
-LDFLAGS= -m elf_i386 -nostdlib -Ttext $(KenerlEntry)      # todo: kernel.bine文件大小超过64KB，在实模式下加载出错
+LDFLAGS= -s -m elf_i386 -nostdlib -Ttext $(KenerlEntry)      # todo: kernel.bine文件大小超过64KB，在实模式下加载出错
 
 C_SRC= $(shell find . -name *.c)
 C_OBJ= $(patsubst %.c, %.o, $(C_SRC))
 S_SRC= $(shell find . -name *.s)
 S_OBJ= $(patsubst %.s, %.o, $(S_SRC))
 
-all:clean run/os.img  run/kernel.bin.asm run/loader.bin.asm
+all:clean run/os.img run/kernel.bin.asm run/loader.bin.asm
 
 .s.o: 
 	$(AS) $(ASFLAGS) $< -o $@
@@ -41,14 +41,13 @@ run/os.img:run/boot.bin run/loader.bin run/kernel.bin
 	sudo cp run/kernel.bin /mnt/floppy  
 	sudo umount /mnt/floppy
 
-clean:
-	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm $(S_OBJ) $(C_OBJ) 
-
 qemu:run/os.img
 	qemu-system-i386 $(QEMUTAG)
 debug:run/os.img
 	qemu-system-i386 -S -s $(QEMUTAG) &
 	sleep 5
 	gdb --command=run/gdbcmd.txt
-run:run/os.img     
+bochs:run/os.img
 	bochs -q -f run/bochsrc -rc run/debug.txt
+clean:
+	rm -f run/*.bin run/*.o run/bochsout.txt run/os.img run/kernel.bin.asm $(S_OBJ) $(C_OBJ) 
