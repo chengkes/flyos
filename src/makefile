@@ -43,6 +43,16 @@ run/os.img:run/boot.bin run/loader.bin run/kernel.bin
 	sudo cp run/kernel.bin /mnt/floppy  
 	sudo umount /mnt/floppy
 
+run/kernel.gurb.bin: $(S_OBJ) $(C_OBJ)  # grub 用的内核
+	$(LD) -m elf_i386 -nostdlib -T run/kernel.lds  $^ -o $@ 
+
+grub:run/kernel.gurb.bin
+	cp run/floppy.img run/os.img 
+	sudo mount run/os.img /mnt/floppy -o loop
+	sudo cp $< /mnt/floppy/hx_kernel  
+	sudo umount /mnt/floppy
+	bochs -q -f run/bochsrc -rc run/debug.txt
+
 qemu:run/os.img
 	qemu-system-i386 $(QEMUTAG)
 debug:run/os.img
