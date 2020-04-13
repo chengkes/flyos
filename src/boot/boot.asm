@@ -1,9 +1,9 @@
 org	07c00h			; 告诉编译器程序加载到7c00处
 
-	; 下面是 FAT12 磁盘的头
 	jmp LABEL_START
-	nop
+	nop			; 占位，保证FAT12 header在正确位置
 	
+	; 下面是 FAT12 磁盘的头
 	%include "fat12.inc"
 
 LABEL_START:	
@@ -13,22 +13,14 @@ LABEL_START:
 	mov		ss, ax
 	mov		sp, 07c00h
 
-	; 清屏
-	mov		al, 0
-	mov		cx, 0					; 窗口的左上角位置(Y坐标，X坐标)
-	mov		dx, 4080h				; 窗口的右下角位置(Y坐标，X坐标)
-	mov		ah, 06h
-	int		10h
-
 	; 复位软驱
 	xor 	ah, ah
 	xor 	dl, dl                  ;驱动器号A盘
 	int 	13h
 
 	; 从软盘中查找文件 
-	push	LoaderName
-	call	SearchFile
-	add		sp, 2
+	mov		di,	LoaderName
+	call	SearchFile 
 	test	ax, ax
 	jz		.not_found
 	; 找到loader文件, 加载到内存 
@@ -47,9 +39,9 @@ LABEL_START:
 	mov		bx, 000ch		; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
 	int		10h				; 10h 号中断 			
 	jmp		$				; 无限循环
- 
+
 %include "lib.inc"
-	
+
 LoaderName: 		db 	"LOADER  BIN"
 NoLoader: 			db 	"NoLoader"
 NoLoaderLen         equ  $ - NoLoader

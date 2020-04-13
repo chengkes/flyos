@@ -1,4 +1,4 @@
-KenerlEntry=0x20400   
+KenerlEntry=0x100400   
 
 QEMUTAG= -m 64M -fda run/os.img -hda run/hd.img -boot a 
 
@@ -7,14 +7,14 @@ CC=gcc
 LD=ld
 ASFLAGS= -f elf -g -F stabs
 CCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
-LDFLAGS= -s -m elf_i386 -nostdlib -Ttext $(KenerlEntry)      # todo: kernel.bine文件大小超过64KB，在实模式下加载出错
+LDFLAGS= -m elf_i386 -nostdlib -Ttext $(KenerlEntry)    
 
 C_SRC= $(shell find . -name *.c)
 C_OBJ= $(patsubst %.c, %.o, $(C_SRC))
 S_SRC= $(shell find . -name *.s)
 S_OBJ= $(patsubst %.s, %.o, $(S_SRC))
 
-all:clean run/os.img run/kernel.bin.asm run/loader.bin.asm
+all:clean run/os.img run/kernel.bin.asm run/loader.bin.asm run/boot.bin.asm
 
 .s.o: 
 	$(AS) $(ASFLAGS) $< -o $@
@@ -28,10 +28,12 @@ run/loader.bin:boot/loader.asm boot/fat12.inc boot/lib.inc boot/pm.inc
 run/kernel.bin: $(S_OBJ) $(C_OBJ) 
 	$(LD) $(LDFLAGS) $^ -o $@ 
 
-run/kernel.bin.asm:run/kernel.bin 
+run/boot.bin.asm:run/boot.bin   # 需要跳过FAT12 header
+	ndisasm $< -o 0x7c3e -e 0x3e > $@ 
+run/kernel.bin.asm:run/kernel.bin # 跳过GRUB头
 	ndisasm $< -o $(KenerlEntry) -u -e 0x400 > $@ 
-run/loader.bin.asm:run/loader.bin 
-	ndisasm $< -u > $@ 
+run/loader.bin.asm:run/loader.bin  # 参见 boot/lib.inc 文件g中哦男 LoaderBase和LoaderOffset的定义	
+	ndisasm $< -o 0x2000 -u -e -0x100 > $@  
 
 run/os.img:run/boot.bin run/loader.bin run/kernel.bin
 	dd if=/dev/zero of=$@ bs=1024 count=1440  

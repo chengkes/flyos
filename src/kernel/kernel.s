@@ -1,4 +1,9 @@
 
+BITS 32
+[section .bss]  
+    resb	20480
+StackTop : 
+
 [BITS 32]
 [section .text]  
 
@@ -331,8 +336,4 @@ syscall:
     pop     eax
     ret
 
-BITS 32
-[section .bss]  
-    resb	20480
-StackTop :
 

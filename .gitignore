@@ -66,3 +66,4 @@ src/.vscode/settings.json
 src/run/.fuse_hidden*
 src/run/hd.img.backup
 src/run/loader.bin.asm
+src/run/boot.bin.asm

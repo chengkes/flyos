@@ -8,10 +8,16 @@ LABEL_START:
     mov     ax, 0b800h
     mov     gs, ax
 
+	; 清屏
+	mov		al, 0
+	mov		cx, 0					; 窗口的左上角位置(Y坐标，X坐标)
+	mov		dx, 4080h				; 窗口的右下角位置(Y坐标，X坐标)
+	mov		ah, 06h
+	int		10h
+
     ; 从软盘中查找kernel文件 
-	push	KernelName
-	call	SearchFile
-	add		sp, 2
+	mov     di, KernelName
+	call	SearchFile 
 	test	ax, ax
 	jz		.not_found
     ; 找到kernel, 加载到内存 
@@ -41,7 +47,7 @@ LABEL_START:
     mov     cr0, eax
     jmp     dword    SelectorC32: LABEL_PM_START+LoaderBase*10h
    
-.not_found:
+.not_found:   ;没有找到内核文件
     mov		bp,	NoKernel
 	mov		dx,	0301h       ; 显示位置（dh,dl） = （行，列）
 	mov		cx, NoKernelLen	; CX = 串长度
@@ -50,11 +56,23 @@ LABEL_START:
 	int		10h				; 10h 号中断 		
     jmp     $ 
 
+;;;============================================================
+    %include "fat12.inc"
+    %include "lib.inc"
+
+    KernelBase          equ 3000h
+    kernelOffset        equ 0
+    
+    KernelName: 		db 	"KERNEL  BIN"
+    NoKernel: 			db 	"NoKernel"
+    NoKernelLen         equ  $ - NoKernel
+;;;============================================================
+;;;   读取内存相关代码
 memBuf:  times 512 db 0
 memBlockSize    db 0
 memHeader: db 'BaseAddr          Length            Type' 
 memHeaderLen equ    $ - memHeader
-
+;;;============================================================
 getMemoryInfo:
     mov     di, memBuf
     xor     ebx, ebx
@@ -181,14 +199,6 @@ showByte:
     pop     ax
     ret
 
-%include "fat12.inc"
-%include "lib.inc"
-    KernelBase          equ 3000h
-    kernelOffset        equ 0
-    
-    KernelName: 		db 	"KERNEL  BIN"
-    NoKernel: 			db 	"NoKernel"
-    NoKernelLen         equ  $ - NoKernel
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 %include "pm.inc"
 [section .gdt]
@@ -205,7 +215,7 @@ BITS 32
     SelectorVideo       equ   LABEL_DESC_VIDEO - LABEL_GDT + SA_RPL3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 [section .stack32]
-LABEL_STACK     times  2048  db 0
+LABEL_STACK     resb  2048 
 StackTop        equ LoaderBase*10h + $    
 
 [section .s32]
@@ -245,7 +255,8 @@ LABEL_PM_START:
     push    SelectorC32
     push    dword [KernelBase*10h+kernelOffset+eEntryOff]   ; 内核入口地址 
     retf                            ;  跳转到kernel, 类似 jmp SelectorC32:KenerlEntry  
-       
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ELF文件 常量定义
 eEntryOff       equ  24             ; entry位置 偏移 
 ePhOff          equ  28             ; ProgramHader位置 偏移  
@@ -255,6 +266,7 @@ ePhNum          equ  44             ; ProgramHader数目 偏移
 pOffset         equ   4         ; 每个ProgramHader中，段起始位置 偏移
 pVaddr          equ   8         ; 每个ProgramHader中，段加载后虚拟地址 偏移
 pFilesize       equ   16        ; 每个ProgramHader中，段大小 偏移
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 复制一段内存 void MemCpy(void* toAddr, void* fromAddr, u16 )
 ;; 参数1： 内存目的地址 
@@ -283,4 +295,3 @@ _memCpy:
     pop     edi
     pop     ebp
     ret
-
