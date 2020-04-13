@@ -58,5 +58,5 @@ u32 readKey();
 void write(char* s, Color c);
 void sprintf(char* buf, char *fmt, ...) ;
 void printf(char *fmt, ...);
-
+void printfColor(Color c, char *fmt, ...);
 #endif

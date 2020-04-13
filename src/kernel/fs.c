@@ -26,13 +26,14 @@ typedef struct _SuperBlock
 } SuperBlock;
 
 // 最好保证sizeof（INode）是SectorSize（512）的约数
+#define MAX_FILENAME_LEN 16
 typedef struct _Inode
 {
     u32 fileMode;
     u32 filetype;
     u32 filesize;
     u32 startSector;
-    char filename[16];
+    char filename[MAX_FILENAME_LEN];
 } Inode;
 
 typedef enum
@@ -43,9 +44,13 @@ typedef enum
     DEVICE
 } FileType;
 
+typedef int InodeVisit(int inodeIdx, int nodeMapValue, Inode* p, u32 param);
+
 void readSuperBlock(HdInfo* hd, u8 partIdx, SuperBlock* sb);
 void mkfs(HdInfo* hd , u8 partIdx, SuperBlock* sb);
 int fexist(HdInfo* hd, SuperBlock* s, char* filename, Inode* p) ;
+int fcreate(HdInfo* hd, SuperBlock* sb, char* filename);
+int showInode(int idx,int nodeMapValue, Inode* p, u32 param);
 
 void taskFs()
 {
@@ -64,17 +69,21 @@ void taskFs()
     assert(hdCount>0);
     assert(allHd[0].partCnt >0);
 
-    // u8 partIdx = 0;
-    // SuperBlock sb;
-    // readSuperBlock(allHd, partIdx, &sb); 
-    // if (sb.type != FS_TYPE) {
-    //     mkfs(allHd, partIdx, &sb);         
-    // }  
-    // assert(sb.type == FS_TYPE);    
+    u8 partIdx = 0;
+    SuperBlock sb;
+    readSuperBlock(allHd, partIdx, &sb); 
+    if (sb.type != FS_TYPE) {
+        mkfs(allHd, partIdx, &sb);         
+    }  
+    assert(sb.type == FS_TYPE);    
 
-    // int i = fexist(allHd, &sb, "not exist", NULL);
+    // test file functions
+    Inode node;
+    fInodeIter(allHd, &sb, showInode, &node, 0); // 遍历所有Inode
 
-    printf("start fs task. %d ..\n", 12);
+    fcreate(allHd, &sb, "test.file");
+
+    printfColor(red,"start fs task. %d ..\n", 12);
     while (1)
     {    }
 }
@@ -125,50 +134,147 @@ void mkfs(HdInfo* hd , u8 partIdx, OUT SuperBlock* sb)
 }
 
 
-// 根据inodeIdx获取Inode信息
-static void getInode(HdInfo* hd, SuperBlock* s,int inodeIdx, Inode* p){
+//////////////////////////////////////////////////////////////////////////////////////////
+///   Inode 相关操作
+
+// 遍历所有Inode, 如果回调函数visit返回0,则结束遍历
+// 回调函数 参数1：Inode的索引，
+// 回调函数 参数2：Inode为空，表示未g使用否则返回Inode信息
+int fInodeIter(HdInfo* hd, SuperBlock* s, InodeVisit visit,Inode* pInode, u32 param ){
+    u8 inodeMapBuf[SECTOR_SIZE*BUF_SECTOR_CNT];
+    int inodeMapSectorIdx = s->startSectorNo + 1 +1 ;
+    int inodeIdx = 0;
+    int nodeMapValue;
+
+    while(inodeIdx < s->inodeCnt) {
+        int sectorCntRead = s->inodeMapSectorCnt > BUF_SECTOR_CNT ? BUF_SECTOR_CNT : s->inodeMapSectorCnt;
+        readHd(hd->device, hd->chanel, inodeMapSectorIdx, sectorCntRead, inodeMapBuf);
+
+        for (int i =0; i<sectorCntRead*SECTOR_SIZE; i++) {
+            for(int bit=0; bit<8; ++bit)  {
+                nodeMapValue = (inodeMapBuf[i]>>bit) & 1 ;
+                if ( nodeMapValue && pInode != NULL ) {
+                    accessInodeInfo(hd, s, inodeIdx, pInode, 0); 
+                }
+                
+                if (0 ==visit(inodeIdx, nodeMapValue, pInode, param)) {
+                    return inodeIdx;
+                }
+                ++inodeIdx;
+                if (inodeIdx >= s->inodeCnt) return -1;
+            }
+        }
+
+        inodeMapSectorIdx += sectorCntRead;
+    }
+
+    return -1;
+}
+
+// 显示Inode信息
+int showInode(int idx, int nodeMapValue, Inode* p, u32 param) {
+    if (nodeMapValue && p != NULL){
+        printf("Node(%x): %s \n", idx, p->filename);
+    } 
+    else {
+        //  printf("Node(%x) is Empty \n", idx);
+    }
+    return 1;
+}
+
+int _getEmptyInode(int idx, int nodeMapValue, Inode* p, u32 param){
+    return nodeMapValue;
+}
+
+// 根据inodeIdx获取或写入InodeMap 位 信息
+int accessInodeMap(HdInfo* hd, SuperBlock* s, int idx, int val, int isWrite) {
+    u32 sectorNo = s->startSectorNo + 1 + 1  + idx/(SECTOR_SIZE*8); // 哪个扇区
+    u32 byteIdx = (idx/8) % SECTOR_SIZE ;                 // 哪个字节
+    u32 bits = idx % 8;                                             // 哪一位
+
+    u8 buf[SECTOR_SIZE];
+    readHd(hd->device, hd->chanel, sectorNo, 1, buf);
+ 
+    if (isWrite) {
+        buf[byteIdx] &= ~(1<<bits) ;
+        return val;
+    }else {
+        return (buf[byteIdx]>>bits) & 1; 
+    }
+}
+
+// 根据inodeIdx获取或写入Inode信息
+void accessInodeInfo(HdInfo* hd, SuperBlock* s,int inodeIdx, Inode* p, int isWrite) {
+    assert(p!=NULL && hd!=NULL && s!=NULL);
+
     u8 buf[SECTOR_SIZE];
     u32 inodeArrayStartNo = s->startSectorNo + 1+1 + s->inodeMapSectorCnt + s->sectorMapSectorCnt;
     u32 inodeStartNo = inodeArrayStartNo + inodeIdx*s->inodeSize / SECTOR_SIZE;
     u32 inodeStartByte = (inodeIdx*s->inodeSize) % SECTOR_SIZE;
 
     readHd(hd->device, hd->chanel, inodeStartNo, 1, buf);
-    memCpy((u8*)p, buf+inodeStartByte, sizeof(Inode));
-}
-
-// 判断文件是否存在,存在返回fidg并设置Inode信息，否则为-1
-int fexist(HdInfo* hd, SuperBlock* s, char* filename, Inode* p) {
-    u8 inodeMapBuf[SECTOR_SIZE*BUF_SECTOR_CNT];
-    int inodeMapSectorIdx = s->startSectorNo + 1 +1 ;
-    int inodeIdx = 0;
-    Inode node;
-    while(inodeIdx <= s->inodeCnt) {
-        int sectorCntRead = s->inodeMapSectorCnt > BUF_SECTOR_CNT ? BUF_SECTOR_CNT : s->inodeMapSectorCnt;
-        readHd(hd->device, hd->chanel, inodeMapSectorIdx, sectorCntRead, inodeMapBuf);
-
-        for (int i =0; i<sectorCntRead*SECTOR_SIZE; i++) {
-            for(int bit=0; bit<8; ++bit)  {
-                if ((inodeMapBuf[i]>>bit) & 1) {
-                    getInode(hd, s, inodeIdx + i*8 + bit, &node);
-                    printf( "...check file: %s \n", node.filename );
-                    if (0==strcmp(node.filename, filename)) {
-                        if (p != NULL) memCpy((u8*)p, (u8*)&node, sizeof(Inode));
-                        return inodeIdx + i*8 + bit;
-                    }
-                }
-            }
-        }
-
-        inodeIdx += sectorCntRead * SECTOR_SIZE * 8; 
-        inodeMapSectorIdx += sectorCntRead;
+    if (isWrite) {
+        memCpy( buf+inodeStartByte,(u8*)p, sizeof(Inode));
+        writeHd(hd->device, hd->chanel, inodeStartNo, 1, buf);
+    }else {
+        memCpy((u8*)p, buf+inodeStartByte, sizeof(Inode));
     }
- 
-    return -1;
 }
 
-int fcreate(HdInfo* hd, SuperBlock* sb, char* filename) {
-    assert(fexist(hd, sb, filename, NULL)==-1);
+//////////////////////////////////////////////////////////////////////////////////////////
 
+ int _findFilename(int idx, int val, Inode* p, u32 param) {
+    if (val && p!=NULL) {
+        return strcmp(p->filename, (char*)param);
+    }
+    return 1;
+ }
+ 
+
+// 获取cnte个连续的空闲扇区，返回第一个扇区号, todo
+// allocateeSector
+ int getEmptySector(HdInfo* hd, SuperBlock* s,int cnt) {
+    u32 sectorNo = s->startSectorNo + 1 + 1  + s->inodeMapSectorCnt ; // 起始扇区
+    
+    // s->sectorMapSectorCnt
+
+    u8 buf[SECTOR_SIZE];
+    readHd(hd->device, hd->chanel, sectorNo, 1, buf);
+  
+ }
+
+// todo: 
+int fcreate(HdInfo* hd, SuperBlock* sb, char* filename) {
+    int len = strlen(filename);
+    if(len >= MAX_FILENAME_LEN){
+         printf("fcreate(%s): filename length shouldnot longer than %d  \n", filename, len);
+        return -1;
+    }
+
+    Inode node;
+    int idx = fInodeIter(hd, sb, _findFilename, &node, filename);
+    if (idx != -1) {
+        printf("fcreate(): file exists %s \n", filename);
+        return -1;
+    }
+
+    // 找到一个空的Inode
+    int inodeIdx =  fInodeIter(hd, sb, _getEmptyInode, NULL, 0);
+    if (inodeIdx == -1) {
+        printf(" fcreate() :there is not empty Inode to suer");
+        return -1;
+    } 
+
+    // 找到一块空的Sector， g并标记为已用
+    int sectorNo = getEmptySector(hd, sb, sb->fileSectorCnt);   
+
+    // 写入Inode信息
+    memCpy( (u8*)node.filename, (u8*)filename, strlen(filename));
+    node.filetype = TEXT;
+    node.filesize = 0;
+    node.startSector = sectorNo;
+    accessInodeInfo(hd, sb, inodeIdx, &node, 1);
+    accessInodeMap(hd, sb, inodeIdx, 1, 1);  // 写入InodeMap
 
     return -1;
 }

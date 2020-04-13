@@ -237,7 +237,7 @@ void taskHd()
     putIrqHandler(IRQ_IDX_HARDDISK1, hdIrqHandler1); // 指定硬盘中断处理程序
 
     char a[2] = "0";
-    printf("Hd Task is ready...\n");
+    printfColor(red,"Hd Task is ready...\n");
     while (1)
     {
         Message msg;

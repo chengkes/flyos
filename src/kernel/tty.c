@@ -173,7 +173,7 @@ void initTty() {
 }
 
 void taskTty(){
-    printf("task tty is ready...\n");
+    printfColor(red, "task tty is ready...\n");
     while(1) {
         u32 key =keyboardRead(0);
         if ( key == DOWN) {
@@ -260,4 +260,11 @@ void printf(char *fmt, ...) {
     char buf[1024];
     vsprintf(buf, fmt, addr);
     write(buf, white);
+}
+
+void printfColor(Color c, char *fmt, ...) {
+    u32 addr = (int)(&fmt) + 4;
+    char buf[1024];
+    vsprintf(buf, fmt, addr);
+    write(buf, c);
 }
