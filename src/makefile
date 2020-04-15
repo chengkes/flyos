@@ -2,12 +2,13 @@ KenerlEntry=0x100400
 
 QEMUTAG= -m 64M -fda run/os.img -hda run/hd.img -boot a 
 
-AS=nasm
-CC=gcc
-LD=ld
+AS=@nasm
+CC=@gcc
+LD=@ld
 ASFLAGS= -f elf -g -F stabs
 CCFLAGS= -Wall -m32 -fno-stack-protector -c -I include -ggdb -gstabs+ -nostdinc -fno-builtin
-LDFLAGS= -m elf_i386 -nostdlib -Ttext $(KenerlEntry)    
+LDFLAGS= -m elf_i386 -nostdlib -Ttext $(KenerlEntry)  
+#LDFLAGS= -m elf_i386 -nostdlib -T run/kernel.lds -verbose 
 
 C_SRC= $(shell find . -name *.c)
 C_OBJ= $(patsubst %.c, %.o, $(C_SRC))

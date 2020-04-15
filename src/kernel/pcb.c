@@ -95,6 +95,10 @@ static void processD(){
     while(1){};
 }
 
+#pragma region 
+//////////////////////////////////////////////////////////////////
+//                  IPC
+
 void sendRecv(u32 type, Message* m) {
     syscall(SYSCALL_IDX_SENDRECV , type, (u32)m);
 }
@@ -108,6 +112,103 @@ void sysSendRecv(u32 type, Message* m, PCB* p) {
         receiveMsg(m);
     }
 }
+
+// 接收中断消息
+void recvIntMsg() {
+    PCB* p = getCurrentPcb();
+    if (p->intMsgCount == 0) { // 没有消息到达，等待
+        // block current pcb
+         p->state |= PCB_STATE_RECV_INT;
+         assert(p->state != 0);
+         wait4Schedule() ; //保证进程切换出去
+    }else {
+        p->intMsgCount = 0;
+    }
+}
+
+// IPC 发送消息
+void sendMsg(Message* m){
+    assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount);
+
+    PCB *pDest = getPcbByIdx(m->recvPcbIdx);
+    m->sendPcbIdx = getCurrentPcbIdx();
+    assert(m->sendPcbIdx != m->recvPcbIdx);
+
+    // is pDest ready for recving msg ?
+    if ( (pDest->state & PCB_STATE_RECVING) && 
+            (pDest->pMsg->sendPcbIdx == PCB_IDX_ANY 
+            || pDest->pMsg->sendPcbIdx == m->sendPcbIdx) ) { // ready, send msg to pDest
+        memCpy ((u8*) pDest->pMsg, (u8*)m, sizeof(Message));
+        // unblock pDest for receiving 
+        pDest->state &= ~PCB_STATE_RECVING;
+        assert(pDest->state == 0);
+    }else {   // not ready, add msg to msg-deque 
+        PCB *pSelf = getCurrentPcb();  
+        pSelf->pMsg = m;
+        pSelf->recvDeque = 0;  // todo:???
+        PCB*  last = pDest;
+        while (last->recvDeque != NULL) {
+            last = last->recvDeque;
+        }
+        last->recvDeque = pSelf;
+
+        // block pSrc for Sending
+        pSelf->state |= PCB_STATE_SENDING;
+        assert(pSelf->state != 0);        
+        wait4Schedule() ; //保证进程切换出去
+    }
+} 
+
+// IPC 接收消息
+void receiveMsg(Message* m){
+    m->recvPcbIdx = getCurrentPcbIdx();
+    assert(m->sendPcbIdx != m->recvPcbIdx);
+    assert( (m->sendPcbIdx>=0 && m->sendPcbIdx<pcbCount) 
+        ||  m->sendPcbIdx == PCB_IDX_ANY );
+
+    PCB *pSelf = getCurrentPcb();
+    // search the recvDeque 
+    PCB* p = pSelf;
+    while (p->recvDeque!=0) {
+        PCB* current = p->recvDeque;
+        if (m->sendPcbIdx == PCB_IDX_ANY || m->sendPcbIdx == current->pMsg->sendPcbIdx) { // 消息队列中有待处理消息
+            memCpy((u8*)m, (u8*)current->pMsg, sizeof(Message) );
+            // 从消息队列移除
+            p->recvDeque = current->recvDeque;
+            // unblock the send PCB
+            PCB *pFrom = getPcbByIdx(m->sendPcbIdx);
+            pFrom->state &= ~ PCB_STATE_SENDING;
+            assert(pFrom->state == 0);
+            return;
+        }else {
+            p = p->recvDeque;
+        }
+    }
+
+    // 没有接收到消息, block本进程，等待消息
+    pSelf->pMsg = m;
+    pSelf->state |= PCB_STATE_RECVING;
+    assert(pSelf->state != 0);    
+    wait4Schedule() ; //保证进程切换出去
+}
+
+// 向进程pid发送中断消息
+void sendIntMsgTo(u32 pid) {
+    assert(pid>=0 && pid<pcbCount);
+    PCB *pDest = getPcbByIdx(pid); 
+    if ( pDest->state & PCB_STATE_RECV_INT  ){  // pDest is ready
+        pDest->intMsgCount = 0;
+        // ublock pDest
+        pDest->state &= ~PCB_STATE_RECV_INT;
+        assert( pDest->state == 0 );
+    }else {  
+        pDest->intMsgCount = 1;
+    }
+}
+
+
+
+#pragma endregion
 
 void initPcb() { 
     pcbCount = 0;
@@ -199,99 +300,4 @@ void addPCB(u32 entry, u32 priority, u32 ttyIdx, ProcessType pt) {
     pcbCount++;
 }
 
-// 向进程pid发送中断消息
-void sendIntMsgTo(u32 pid) {
-    assert(pid>=0 && pid<pcbCount);
-    PCB *pDest = getPcbByIdx(pid); 
-    if ( pDest->state & PCB_STATE_RECV_INT  ){  // pDest is ready
-        pDest->intMsgCount = 0;
-        // ublock pDest
-        pDest->state &= ~PCB_STATE_RECV_INT;
-        assert( pDest->state == 0 );
-    }else {  
-        pDest->intMsgCount = 1;
-    }
-}
 
-
-// 接收中断消息
-void recvIntMsg() {
-    PCB* p = getCurrentPcb();
-    if (p->intMsgCount == 0) { // 没有消息到达，等待
-        // block current pcb
-         p->state |= PCB_STATE_RECV_INT;
-         assert(p->state != 0);
-         schedule();
-         delayMs(1000 / CLOCK_COUNTER0_HZ + 1); // 等待一个时钟周期，保证进程切换出去
-    }else {
-        p->intMsgCount = 0;
-    }
-}
-
-// IPC 发送消息
-void sendMsg(Message* m){
-    assert(m->recvPcbIdx>=0 && m->recvPcbIdx<pcbCount);
-
-    PCB *pDest = getPcbByIdx(m->recvPcbIdx);
-    m->sendPcbIdx = getCurrentPcbIdx();
-    assert(m->sendPcbIdx != m->recvPcbIdx);
-
-    // is pDest ready for recving msg ?
-    if ( (pDest->state & PCB_STATE_RECVING) && 
-            (pDest->pMsg->sendPcbIdx == PCB_IDX_ANY 
-            || pDest->pMsg->sendPcbIdx == m->sendPcbIdx) ) { // ready, send msg to pDest
-        memCpy ((u8*) pDest->pMsg, (u8*)m, sizeof(Message));
-        // unblock pDest for receiving 
-        pDest->state &= ~PCB_STATE_RECVING;
-        assert(pDest->state == 0);
-    }else {   // not ready, add msg to msg-deque 
-        PCB *pSelf = getCurrentPcb();  
-        pSelf->pMsg = m;
-        pSelf->recvDeque = 0;
-        PCB*  last = pDest;
-        while (last->recvDeque != 0) {
-            last = last->recvDeque;
-        }
-        last->recvDeque = pSelf;
-
-        // block pSrc for Sending
-        pSelf->state |= PCB_STATE_SENDING;
-        assert(pSelf->state != 0);
-        schedule();
-        delayMs(1000/CLOCK_COUNTER0_HZ+1); // 等待一个时钟周期，保证进程切换出去 
-    }
-} 
-
-// IPC 接收消息
-void receiveMsg(Message* m){
-    m->recvPcbIdx = getCurrentPcbIdx();
-    assert(m->sendPcbIdx != m->recvPcbIdx);
-    assert( (m->sendPcbIdx>=0 && m->sendPcbIdx<pcbCount) 
-        ||  m->sendPcbIdx == PCB_IDX_ANY );
-
-    PCB *pSelf = getCurrentPcb();
-    // search the recvDeque 
-    PCB* p = pSelf;
-    while (p->recvDeque!=0) {
-        PCB* current = p->recvDeque;
-        if (m->sendPcbIdx == PCB_IDX_ANY || m->sendPcbIdx == current->pMsg->sendPcbIdx) { // 消息队列中有待处理消息
-            memCpy((u8*)m, (u8*)current->pMsg, sizeof(Message) );
-            // 从消息队列移除
-            p->recvDeque = current->recvDeque;
-            // unblock the send PCB
-            PCB *pFrom = getPcbByIdx(m->sendPcbIdx);
-            pFrom->state &= ~ PCB_STATE_SENDING;
-            assert(pFrom->state == 0);
-            return;
-        }else {
-            p = p->recvDeque;
-        }
-    }
-
-    // 没有接收到消息, block本进程，等待消息
-    pSelf->pMsg = m;
-    pSelf->state |= PCB_STATE_RECVING;
-    assert(pSelf->state != 0);
-    schedule();
-    delayMs(1000/CLOCK_COUNTER0_HZ+1); // 等待一个时钟周期，保证进程切换出去 
-}

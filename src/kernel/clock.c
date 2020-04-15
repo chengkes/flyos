@@ -7,6 +7,7 @@
 
 static volatile u32 ticks;      // 时钟中断发生次数
 volatile u32 isInt ;     // 是否在处理中断程序
+static volatile u32 scheduleTicks;      // 时钟中断发生次数
 
 // 时钟中断处理程序
 static void clockHandler(){
@@ -19,11 +20,13 @@ static void clockHandler(){
 
     // 没有中断重入，进程运行时发生的中断，可以进行进程切换
     schedule();
+    scheduleTicks++;
 }
 
 void initClock(){
     isInt = 0;
     ticks = 0;     
+    scheduleTicks = 0;
     putIrqHandler(IRQ_IDX_CLOCK, clockHandler);
 
     // 初始化时钟中断频率
@@ -34,6 +37,16 @@ void initClock(){
 
 u32 getTicks(){
     return ticks;
+}
+
+u32 getScheduleTicks() {   
+    return scheduleTicks;
+}
+
+// 等待进行en切换   todo: test it
+u32 wait4Schedule() {   
+    u32 t = scheduleTicks;
+    while (getScheduleTicks() == t){}
 }
 
 // 延迟t毫秒 
