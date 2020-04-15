@@ -15,5 +15,7 @@
 u32 getTicks();
 void initClock();
 void delayMs(u32);
+void wait4Schedule();
+u32 getScheduleTicks() ;
 
 #endif

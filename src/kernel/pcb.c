@@ -94,8 +94,7 @@ static void processD(){
     // fremove(fid);
     while(1){};
 }
-
-#pragma region 
+ 
 //////////////////////////////////////////////////////////////////
 //                  IPC
 
@@ -120,6 +119,7 @@ void recvIntMsg() {
         // block current pcb
          p->state |= PCB_STATE_RECV_INT;
          assert(p->state != 0);
+         schedule();
          wait4Schedule() ; //保证进程切换出去
     }else {
         p->intMsgCount = 0;
@@ -155,6 +155,7 @@ void sendMsg(Message* m){
         // block pSrc for Sending
         pSelf->state |= PCB_STATE_SENDING;
         assert(pSelf->state != 0);        
+        schedule();
         wait4Schedule() ; //保证进程切换出去
     }
 } 
@@ -189,6 +190,7 @@ void receiveMsg(Message* m){
     pSelf->pMsg = m;
     pSelf->state |= PCB_STATE_RECVING;
     assert(pSelf->state != 0);    
+    schedule();
     wait4Schedule() ; //保证进程切换出去
 }
 
@@ -206,9 +208,7 @@ void sendIntMsgTo(u32 pid) {
     }
 }
 
-
-
-#pragma endregion
+ 
 
 void initPcb() { 
     pcbCount = 0;

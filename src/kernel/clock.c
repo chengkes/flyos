@@ -44,9 +44,9 @@ u32 getScheduleTicks() {
 }
 
 // 等待进行en切换   todo: test it
-u32 wait4Schedule() {   
-    u32 t = scheduleTicks;
-    while (getScheduleTicks() == t){}
+void wait4Schedule() {   
+    volatile u32 t = scheduleTicks;
+    // while (getScheduleTicks() - t<=1);
 }
 
 // 延迟t毫秒 

@@ -3,6 +3,6 @@ file run/kernel.bin
 b exceptionHandler
 #b fs.c:70
 #b osinit
-b taskFs
+b wait4Schedule
 #b hdIrqHandler
 c
