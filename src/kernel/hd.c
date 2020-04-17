@@ -9,7 +9,7 @@
 #include "types.h"
 
 static u8 hdStatus[2]; // 支持2个硬盘通道
-static u32 volatile intMsgCnt = 0;
+// static u32 volatile intMsgCnt = 0;
 
 static void printHdInfo(HdInfo *p);
 static void getHdInfo(HdInfo *p);
@@ -23,15 +23,17 @@ static int _readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, u16 *buf);
 static void hdIrqHandler0()
 {
     hdStatus[0] = inByte(PORT_HD_PRIMARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
-    ++intMsgCnt;
+    sendIntMsgTo(PCB_IDX_HD);                       // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
+    // ++intMsgCnt;
+    
 }
 
 // 硬盘ATA1,中断处理程序 int15
 static void hdIrqHandler1()
 {
     hdStatus[1] = inByte(PORT_HD_SECONDARY_STATUS); //读取 hard disk status, 使硬盘能继续相应中断sen
-    // sendIntMsgTo(PCB_IDX_HD);                       // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
-    ++intMsgCnt;
+    sendIntMsgTo(PCB_IDX_HD);                       // taskHd 在PCB中的索引， 参见pcb.c:void initPcb();
+    // ++intMsgCnt;
 }
 
 // 识别硬盘， 返回硬盘个数
@@ -81,7 +83,7 @@ static void wait4hdStatus(u8 chanel, u8 status, u8 value)
 
 static void hdCmd(u8 device, u8 chanel, u8 sectorCnt, u32 sectorNo, u32 cmd)
 {
-    intMsgCnt = 0;   // 清除硬盘中断标志
+    // intMsgCnt = 0;   // 清除硬盘中断标志
     wait4hdStatus(chanel, HD_STATUS_BSY, 0);
     outByte(0, chanel ? PORT_HD_SECONDARY_FEATURES : PORT_HD_PRIMARY_FEATURES);
     outByte(0, chanel ? PORT_HD_SECONDARY_CONTROL : PORT_HD_PRIMARY_CONTROL);
@@ -98,7 +100,8 @@ static void getHdInfo(HdInfo *p)
 {
     // 像硬盘发生IDENTIFY命令，获取硬盘参数
     hdCmd(p->device, p->chanel, 0, 0, HD_CMD_IDENTIFY);
-    while (intMsgCnt != 1) ; // 等待硬盘中断发生
+    // while (intMsgCnt != 1) ; // 等待硬盘中断发生
+    recvIntMsg(); // 等待硬盘中断发生
 
     u16 buf[256];
     insWord(p->chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
@@ -168,7 +171,8 @@ static int _readHd(u8 device, u8 chanel, u32 sectorNo, u8 sectorCnt, u16 *buf)
     hdCmd(device, chanel, sectorCnt, sectorNo, HD_CMD_READ);  
     for (int i=0;i<sectorCnt; ++i)
     {
-        while (intMsgCnt == i) ; // 等待硬盘中断
+        // while (intMsgCnt == i) ; // 等待硬盘中断
+        recvIntMsg(); // 等待硬盘中断发生
         insWord(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
         buf += SECTOR_SIZE / 2;
     }
@@ -201,7 +205,8 @@ void _writeHd(u8 device, u8 chanel, int sectorNo, u8 sectorCnt, u16 *buf)
     {
         wait4hdStatus(chanel, HD_STATUS_DRQ, HD_STATUS_DRQ);
         outsWord(chanel ? PORT_HD_SECONDARY_DATA : PORT_HD_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
-        while (intMsgCnt == i) ;  //   等待硬盘中断发生
+        // while (intMsgCnt == i) ;  //   等待硬盘中断发生
+        recvIntMsg(); // 等待硬盘中断发生
         buf+= SECTOR_SIZE / 2;
     }
 }
@@ -249,7 +254,7 @@ void taskHd()
 {
     putIrqHandler(IRQ_IDX_HARDDISK0, hdIrqHandler0); // 指定硬盘中断处理程序
     putIrqHandler(IRQ_IDX_HARDDISK1, hdIrqHandler1); // 指定硬盘中断处理程序
-    intMsgCnt = 0;
+
     char a[2] = "0";
     printfColor(red,"Hd Task is ready...\n");
     while (1)
