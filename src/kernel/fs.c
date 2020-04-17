@@ -74,10 +74,10 @@ void taskFs()
     u8 partIdx = 0;
     SuperBlock sb;
     readSuperBlock(allHd, partIdx, &sb); 
-    // if (sb.type != FS_TYPE) {
+    // // if (sb.type != FS_TYPE) {
         mkfs(allHd, partIdx, &sb); 
         readSuperBlock(allHd, partIdx, &sb);         
-    // }  
+    // // }  
     
     assert(sb.type == FS_TYPE);    
 

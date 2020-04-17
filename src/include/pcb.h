@@ -85,11 +85,7 @@ void initPcb();
 PCB* getCurrentPcb();
 void schedule();
 PCB* getPcbByIdx(u32 idx);
-void receiveMsg(Message*);
-void sendMsg(Message*);
-void sendIntMsgTo(u32 pid);
 void sendRecv(u32 type, Message* m);
-void recvIntMsg();
 u32 getCurrentPcbIdx();
 
 #endif

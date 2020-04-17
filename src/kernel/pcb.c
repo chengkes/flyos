@@ -15,6 +15,9 @@
 // #define PCB_IDX_C  3
 // #define PCB_IDX_TASK_HD  4
 
+void sendMsg(Message* m);
+void receiveMsg(Message* m);
+
 // LDT中 选择子
 #define LDT_SELECTOR_D32        (0x00 | SA_TIL )   // 数据段 选择子
 #define LDT_SELECTOR_C32        (0x08 | SA_TIL )   // 代码段 选择子
@@ -98,10 +101,12 @@ static void processD(){
 //////////////////////////////////////////////////////////////////
 //                  IPC
 
+// 
 void sendRecv(u32 type, Message* m) {
     syscall(SYSCALL_IDX_SENDRECV , type, (u32)m);
 }
 
+// running in  ring0 
 void sysSendRecv(u32 type, Message* m, PCB* p) {
     assert(type==SEND || type==RECV);
 
@@ -113,18 +118,17 @@ void sysSendRecv(u32 type, Message* m, PCB* p) {
 }
 
 // 接收中断消息
-void recvIntMsg() {
-    PCB* p = getCurrentPcb();
-    if (p->intMsgCount == 0) { // 没有消息到达，等待
-        // block current pcb
-         p->state |= PCB_STATE_RECV_INT;
-         assert(p->state != 0);
-         schedule();
-         wait4Schedule() ; //保证进程切换出去
-    }else {
-        p->intMsgCount = 0;
-    }
-}
+// void recvIntMsg() {
+//     PCB* p = getCurrentPcb();
+//     if (p->intMsgCount == 0) { // 没有消息到达，等待
+//         // block current pcb
+//          p->state |= PCB_STATE_RECV_INT;
+//          assert(p->state != 0);
+//          schedule();
+//     }else {
+//         p->intMsgCount = 0;
+//     }
+// }
 
 // IPC 发送消息
 void sendMsg(Message* m){
@@ -155,8 +159,7 @@ void sendMsg(Message* m){
         // block pSrc for Sending
         pSelf->state |= PCB_STATE_SENDING;
         assert(pSelf->state != 0);        
-        schedule();
-        wait4Schedule() ; //保证进程切换出去
+        schedule();  
     }
 } 
 
@@ -191,24 +194,21 @@ void receiveMsg(Message* m){
     pSelf->state |= PCB_STATE_RECVING;
     assert(pSelf->state != 0);    
     schedule();
-    wait4Schedule() ; //保证进程切换出去
 }
 
 // 向进程pid发送中断消息
-void sendIntMsgTo(u32 pid) {
-    assert(pid>=0 && pid<pcbCount);
-    PCB *pDest = getPcbByIdx(pid); 
-    if ( pDest->state & PCB_STATE_RECV_INT  ){  // pDest is ready
-        pDest->intMsgCount = 0;
-        // ublock pDest
-        pDest->state &= ~PCB_STATE_RECV_INT;
-        assert( pDest->state == 0 );
-    }else {  
-        pDest->intMsgCount = 1;
-    }
-}
-
- 
+// void sendIntMsgTo(u32 pid) {
+//     assert(pid>=0 && pid<pcbCount);
+//     PCB *pDest = getPcbByIdx(pid); 
+//     if ( pDest->state & PCB_STATE_RECV_INT  ){  // pDest is ready
+//         pDest->intMsgCount = 0;
+//         // ublock pDest
+//         pDest->state &= ~PCB_STATE_RECV_INT;
+//         assert( pDest->state == 0 );
+//     }else {  
+//         pDest->intMsgCount = 1;
+//     }
+// }
 
 void initPcb() { 
     pcbCount = 0;

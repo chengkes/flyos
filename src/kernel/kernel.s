@@ -306,14 +306,15 @@ int90syscall: ;
     mov     ds, ax
     mov     es, ax
     mov     fs, ax 
-.1:                         
+.1:                             
     sti    
     push    dword [currentPcb]
     push    ecx
     push    ebx
     call    [esi]
-    mov     [currentPcb + PCB_EAX], eax     ; 讲返回值放入PCB的eax中
-    add     esp, 3*4
+    add     esp, 2*4
+    pop     ebx    ; 原来进程PCB地址, call调用后curentPcb可能变化
+    mov     [ebx + PCB_EAX], eax     ; 讲返回值放入PCB的eax中
     cli 
     cmp     dword [isInt], 0  
     jne     restart_int 
