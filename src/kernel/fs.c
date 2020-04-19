@@ -1,4 +1,6 @@
 
+// TODO: fwrite, fread, fcreate-dev-bin
+
 #include "types.h"
 #include "hd.h"
 #include "lib.h"
@@ -359,6 +361,27 @@ int fdelte(HdInfo *hd, SuperBlock *sb, char *filename)
     freeSector(hd, sb, node.startSector, (sb->fileSectorCnt + 7) / 8);
     accessInodeMap(hd, sb, idx, 0, 1);
     return 0;
+}
+
+// 将buf中sizee个i字节写入文件fid的位置seek处
+int fwrite(HdInfo *hd, SuperBlock *sb,int fid, u8* buf,int seek, int size) {
+    if (seek + size >= sb->fileSectorCnt*SECTOR_SIZE) {
+        printf("fwrite 写入位置%d 大于文件容量%d \n", seek+size, sb->fileSectorCnt*SECTOR_SIZE);
+        return -1;
+    }
+
+    if (0 == accessInodeMap(hd, sb, fid, 0, 0)) {
+        printf("fwrite 文件不存在 %d \n",fid);
+        return -1;
+    }
+    
+    Inode node;
+    accessInodeInfo(hd, sb, fid, &node, 0);
+    node.filesize =  node.filesize > seek+size ? node.filesize :  seek+size ;
+    // todo:
+
+    accessInodeInfo(hd, sb, fid, &node, 1);
+    return size;
 }
 
 // 创建文件，返回文件InodeIdx
