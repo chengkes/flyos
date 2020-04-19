@@ -174,16 +174,20 @@ void receiveMsg(Message* m){
     PCB *pSelf = getCurrentPcb();
     
     if (m->sendPcbIdx == PCB_IDX_INTERRUPT ) { // 接收中断消息
-        __asm__ volatile ("cli"); // todo: 改为 edisablIrq
+
+        setIrq(IRQ_IDX_HARDDISK0, 0);
+        setIrq(IRQ_IDX_HARDDISK1, 0);
         if (pSelf->intMsgCount == 0) { // 没有消息到达，等待
             // block current pcb
-            pSelf->state |= PCB_STATE_RECV_INT;  // 如果此时硬盘中断发生，将intMsgCount置1,那么pSelf进程被永久阻塞，成为僵尸进程,所以需要先关中断
+            pSelf->state |= PCB_STATE_RECV_INT;  // 如果此时硬盘中断发生，将intMsgCount置1,那么pSelf进程被永久阻塞，成为僵尸进程,所以需要先关硬盘中断
             assert(pSelf->state != 0);
             schedule();
         }else {
             pSelf->intMsgCount = 0;
         }
-        __asm__ volatile ("sti");
+        setIrq(IRQ_IDX_HARDDISK0, 1);
+        setIrq(IRQ_IDX_HARDDISK1, 1);
+
         return;
     }
 

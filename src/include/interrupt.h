@@ -50,6 +50,7 @@ void init8259a();
 void buildIdt();
 
 void setIrq(int irq, int enable) ;
+int isIrqEnable(int irq);
 
 // ----- 来自汇编的函数声明 --------------------
 

@@ -95,6 +95,20 @@ void exceptionHandler(int vec_no, int err_code, int eip, int cs, int eflags) {
     
 }
 
+// 获取IRQ状态
+int isIrqEnable(int irq) {
+    assert(irq>=0 && irq<=15);
+    
+    u16 port = PORT_8259A_MASTER2;
+    if (irq>=8) {
+        port = PORT_8259A_SLAVE2;
+        irq -= 8;
+    }
+    irq = 1 << irq;
+
+    return (inByte(port) & irq) == 0 ;
+}
+
 //  启用或禁用IRQ 
 void setIrq(int irq, int enable) {
     assert(irq>=0 && irq<=15);
@@ -106,12 +120,12 @@ void setIrq(int irq, int enable) {
     }
     irq = 1 << irq;
 
-    asm volatile("pushf");   // 保存标志寄存器，主要是中断标志
-    asm volatile("cli");
+    // asm volatile("pushf");   // 保存标志寄存器，主要是中断标志
+    // asm volatile("cli");
     if (enable) {  // 启用IRQ，令ocw1的irq位=0
         outByte(inByte(port) & ~irq, port); 
     }else{   // 禁用IRQ，令ocw1的irq位=1
         outByte(inByte(port) | irq, port);
     } 
-    asm volatile("popf");   // 恢复标志寄存器，主要是中断标志
+    // asm volatile("popf");   // 恢复标志寄存器，主要是中断标志
 }
